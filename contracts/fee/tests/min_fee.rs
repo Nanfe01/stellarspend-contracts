@@ -99,3 +99,14 @@ fn min_fee_works_with_arbitrary_amounts() {
     assert_eq!(ctx.client.get_escrow_balance(), 275);
     assert_eq!(ctx.client.get_pending_fees(&1), 275);
 }
+
+#[test]
+fn min_fee_boundary_allows_exact_minimum() {
+    let ctx = setup();
+    ctx.client.set_min_fee(&ctx.admin, &1i128);
+
+    let pending = ctx.client.collect_fee(&ctx.payer, &1i128);
+    assert_eq!(pending, 1);
+    assert_eq!(ctx.client.get_escrow_balance(), 1);
+    assert_eq!(ctx.client.get_pending_fees(&1), 1);
+}

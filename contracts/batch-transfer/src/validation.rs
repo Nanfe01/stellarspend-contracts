@@ -3,14 +3,29 @@
 use soroban_sdk::{Address, Env};
 
 /// Validation error types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationError {
     /// Invalid transfer amount
     InvalidAmount,
+    /// Duplicate recipient in the batch
+    DuplicateRecipient(Address),
 }
 
 /// Validates a recipient address.
 pub fn validate_address(_env: &Env, _address: &Address) -> Result<(), ValidationError> {
+    Ok(())
+}
+
+/// Ensures a recipient address has not already appeared in the batch.
+pub fn validate_unique_recipient(
+    seen: &Vec<Address>,
+    recipient: &Address,
+) -> Result<(), ValidationError> {
+    for existing in seen.iter() {
+        if existing == recipient {
+            return Err(ValidationError::DuplicateRecipient(recipient.clone()));
+        }
+    }
     Ok(())
 }
 
