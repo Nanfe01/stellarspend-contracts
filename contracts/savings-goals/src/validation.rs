@@ -297,7 +297,7 @@ mod tests {
         assert!(is_valid_deadline(&env, current + 100));
         assert!(is_valid_deadline(&env, current + 1000000));
         assert!(!is_valid_deadline(&env, current));
-        assert!(!is_valid_deadline(&env, current - 100));
+        assert!(!is_valid_deadline(&env, current.saturating_sub(100)));
     }
 
     #[test]

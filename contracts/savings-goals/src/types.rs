@@ -47,6 +47,24 @@ pub struct SavingsGoal {
     pub created_at: u64,
     /// Whether the goal is active
     pub is_active: bool,
+    /// Whether the goal has reached its target amount
+    pub is_complete: bool,
+}
+
+/// Represents progress information for a savings goal.
+#[derive(Clone, Debug)]
+#[contracttype]
+pub struct SavingsGoalProgress {
+    /// Unique goal ID
+    pub goal_id: u64,
+    /// Current saved amount
+    pub current_amount: i128,
+    /// Target amount to save
+    pub target_amount: i128,
+    /// Progress percentage capped at 100
+    pub progress_percentage: u32,
+    /// Whether the goal is complete
+    pub is_complete: bool,
 }
 
 /// Result of processing a single goal creation.

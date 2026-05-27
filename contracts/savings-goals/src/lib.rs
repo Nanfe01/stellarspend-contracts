@@ -30,7 +30,7 @@ use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Vec};
 pub use crate::types::{
     BatchGoalMetrics, BatchGoalResult, BatchMilestoneMetrics, BatchMilestoneResult, DataKey,
     ErrorCode, GoalEvents, GoalResult, MilestoneAchievement, MilestoneAchievementRequest,
-    MilestoneResult, SavingsGoal, SavingsGoalRequest, MAX_BATCH_SIZE,
+    MilestoneResult, SavingsGoal, SavingsGoalProgress, SavingsGoalRequest, MAX_BATCH_SIZE,
 };
 use crate::validation::{validate_goal_request, validate_milestone_request};
 
@@ -318,6 +318,7 @@ impl SavingsGoalsContract {
                     // Validation succeeded - create the goal
                     goal_id_counter += 1;
 
+                    let is_complete = request.initial_contribution >= request.target_amount;
                     let goal = SavingsGoal {
                         goal_id: goal_id_counter,
                         user: request.user.clone(),
@@ -327,6 +328,7 @@ impl SavingsGoalsContract {
                         deadline: request.deadline,
                         created_at: current_ledger,
                         is_active: true,
+                        is_complete,
                     };
 
                     // Accumulate metrics
@@ -449,7 +451,7 @@ impl SavingsGoalsContract {
     /// Emits milestone events automatically when goal progress crosses thresholds.
     /// Call this after updating a goal's current_amount.
     pub fn check_and_emit_milestones(env: &Env, goal_id: u64) {
-        let goal: SavingsGoal = match env.storage().persistent().get(&DataKey::Goal(goal_id)) {
+        let mut goal: SavingsGoal = match env.storage().persistent().get(&DataKey::Goal(goal_id)) {
             Some(g) => g,
             None => return,
         };
@@ -459,11 +461,19 @@ impl SavingsGoalsContract {
             .persistent()
             .get(&DataKey::GoalMilestonesPercent(goal_id))
             .unwrap_or(Vec::new(env));
-        let progress = if goal.target_amount > 0 {
+        let mut progress = if goal.target_amount > 0 {
             (goal.current_amount * 100 / goal.target_amount) as u32
         } else {
             0
         };
+        if progress > 100 {
+            progress = 100;
+        }
+        let is_complete = goal.current_amount >= goal.target_amount;
+        if goal.is_complete != is_complete {
+            goal.is_complete = is_complete;
+            env.storage().persistent().set(&DataKey::Goal(goal_id), &goal);
+        }
         for &milestone in milestones.iter() {
             if progress >= milestone && !triggered.contains(&milestone) {
                 // Emit event
@@ -487,6 +497,35 @@ impl SavingsGoalsContract {
     /// * `Option<SavingsGoal>` - The goal if found
     pub fn get_goal(env: Env, goal_id: u64) -> Option<SavingsGoal> {
         env.storage().persistent().get(&DataKey::Goal(goal_id))
+    }
+
+    /// Gets current progress details for a savings goal.
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `goal_id` - The ID of the goal to query
+    ///
+    /// # Returns
+    /// * `Option<SavingsGoalProgress>` - Progress summary if goal exists
+    pub fn get_goal_progress(env: Env, goal_id: u64) -> Option<SavingsGoalProgress> {
+        env.storage().persistent().get(&DataKey::Goal(goal_id)).map(|goal: SavingsGoal| {
+            let mut progress_percentage = if goal.target_amount > 0 {
+                (goal.current_amount * 100 / goal.target_amount) as u32
+            } else {
+                0
+            };
+            if progress_percentage > 100 {
+                progress_percentage = 100;
+            }
+            let is_complete = goal.current_amount >= goal.target_amount;
+            SavingsGoalProgress {
+                goal_id: goal.goal_id,
+                current_amount: goal.current_amount,
+                target_amount: goal.target_amount,
+                progress_percentage,
+                is_complete,
+            }
+        })
     }
 
     /// Retrieves all goal IDs for a specific user.
@@ -629,6 +668,7 @@ impl SavingsGoalsContract {
                 .get::<crate::types::DataKey, crate::types::SavingsGoal>(&key)
             {
                 goal.current_amount = amount;
+                goal.is_complete = amount >= goal.target_amount;
                 env.storage().persistent().set(&key, &goal);
             }
         });
