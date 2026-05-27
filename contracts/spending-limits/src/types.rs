@@ -11,6 +11,13 @@ pub const MIN_SPENDING_LIMIT: i128 = 1_000_000;
 /// Maximum monthly spending limit (10 million XLM in stroops)
 pub const MAX_SPENDING_LIMIT: i128 = 100_000_000_000_000_000;
 
+/// Minimum reset window duration. Window-based spending limits must reset at least
+/// once every 24 hours to prevent permanent blocking after reaching a daily cap.
+pub const MIN_RESET_WINDOW_SECONDS: u64 = 86_400;
+
+/// Maximum reset window duration (30 days)
+pub const MAX_RESET_WINDOW_SECONDS: u64 = 2_592_000;
+
 /// Represents a spending limit update request for a user.
 #[derive(Clone, Debug)]
 #[contracttype]
@@ -19,6 +26,8 @@ pub struct SpendingLimitRequest {
     pub user: Address,
     /// New monthly spending limit (in stroops)
     pub monthly_limit: i128,
+    /// Reset window for the spending limit (in seconds)
+    pub reset_window_seconds: u64,
     /// Optional category-specific limit (e.g., "food", "entertainment")
     pub category: Option<soroban_sdk::Symbol>,
 }
@@ -31,6 +40,8 @@ pub struct SpendingLimit {
     pub user: Address,
     /// Monthly spending limit (in stroops)
     pub monthly_limit: i128,
+    /// Reset window for the spending limit (in seconds)
+    pub reset_window_seconds: u64,
     /// Current month's spending (in stroops)
     pub current_spending: i128,
     /// Optional category
@@ -99,8 +110,8 @@ pub enum DataKey {
     TotalLimitsUpdated,
     /// Total batches processed lifetime
     TotalBatchesProcessed,
-    /// Per-user daily spending for a given logical day identifier.
-    DailySpending(Address, u64),
+    /// Per-user spending for a given logical time window identifier.
+    WindowSpending(Address, u64),
     /// Per-user monthly spending for a given logical month identifier.
     MonthlySpending(Address, u64),
 }

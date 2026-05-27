@@ -3,7 +3,7 @@
 #![cfg(test)]
 
 use crate::{SpendingLimitsContract, SpendingLimitsContractClient};
-use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env, Vec};
+use soroban_sdk::{symbol_short, testutils::{Address as _, Ledger}, Address, Env, Vec};
 
 use crate::types::{ErrorCode, LimitUpdateResult, SpendingLimitRequest};
 
@@ -26,6 +26,7 @@ fn create_valid_request(env: &Env, user: &Address, limit: i128) -> SpendingLimit
     SpendingLimitRequest {
         user: user.clone(),
         monthly_limit: limit,
+        reset_window_seconds: 86_400,
         category: Some(symbol_short!("general")),
     }
 }
@@ -432,6 +433,27 @@ fn test_enforce_spending_limit_allows_within_daily_and_monthly() {
 }
 
 #[test]
+fn test_enforce_spending_limit_resets_after_window() {
+    let (env, admin, client) = setup_test_contract();
+    let user = Address::generate(&env);
+
+    // Configure a monthly limit with a 24-hour reset window.
+    let mut requests: Vec<SpendingLimitRequest> = Vec::new(&env);
+    let mut request = create_valid_request(&env, &user, 300);
+    request.reset_window_seconds = 86_400;
+    requests.push_back(request);
+    client.batch_update_spending_limits(&admin, &requests);
+
+    // Use the starting window
+    env.ledger().set_timestamp(0);
+    client.enforce_spending_limit(&user, &10);
+
+    // Advance past the configured reset window and verify the counter resets.
+    env.ledger().set_timestamp(86_401);
+    client.enforce_spending_limit(&user, &10);
+}
+
+#[test]
 #[should_panic]
 fn test_enforce_spending_limit_daily_exceeded() {
     let (env, admin, client) = setup_test_contract();
@@ -440,13 +462,20 @@ fn test_enforce_spending_limit_daily_exceeded() {
     // Monthly 300 -> daily 10
     let mut requests: Vec<SpendingLimitRequest> = Vec::new(&env);
     requests.push_back(create_valid_request(&env, &user, 300));
-    client.batch_update_spending_limits(&admin, &requests);
+    let result = client.batch_update_spending_limits(&admin, &requests);
+    assert_eq!(result.successful, 1);
+    assert!(client.get_spending_limit(&user).is_some());
 
     env.ledger().set_timestamp(2 * 86_400); // day 2
 
-    // 2 * 5 is allowed; the third spend pushes daily total above 10 and should panic.
+    // 2 * 5 is allowed.
     client.enforce_spending_limit(&user, &5);
     client.enforce_spending_limit(&user, &5);
+
+    let limit = client.get_spending_limit(&user).unwrap();
+    assert_eq!(limit.current_spending, 10);
+
+    // The third spend pushes daily total above 10 and should panic.
     client.enforce_spending_limit(&user, &1);
 }
 
@@ -459,13 +488,18 @@ fn test_enforce_spending_limit_monthly_exceeded_over_multiple_days() {
     // Monthly 30, daily 1 (30 / 30) => 1 unit per day max, 30 units per month.
     let mut requests: Vec<SpendingLimitRequest> = Vec::new(&env);
     requests.push_back(create_valid_request(&env, &user, 30));
-    client.batch_update_spending_limits(&admin, &requests);
+    let result = client.batch_update_spending_limits(&admin, &requests);
+    assert_eq!(result.successful, 1);
+    assert!(client.get_spending_limit(&user).is_some());
 
     // Spend 1 unit on 30 different "days" within the same logical month window.
     for d in 0..30u64 {
         env.ledger().set_timestamp(d * 86_400);
         client.enforce_spending_limit(&user, &1);
     }
+
+    let limit = client.get_spending_limit(&user).unwrap();
+    assert_eq!(limit.current_spending, 30);
 
     // Next day is still within the same 30-day "month" bucket and should exceed the
     // monthly limit, even though the daily limit would allow it.

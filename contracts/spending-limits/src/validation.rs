@@ -2,7 +2,14 @@
 
 use soroban_sdk::Address;
 
-use crate::types::{ErrorCode, SpendingLimitRequest, MAX_SPENDING_LIMIT, MIN_SPENDING_LIMIT};
+use crate::types::{
+    ErrorCode,
+    SpendingLimitRequest,
+    MAX_RESET_WINDOW_SECONDS,
+    MAX_SPENDING_LIMIT,
+    MIN_RESET_WINDOW_SECONDS,
+    MIN_SPENDING_LIMIT,
+};
 
 /// Validates a spending limit update request.
 ///
@@ -20,11 +27,21 @@ pub fn validate_limit_request(request: &SpendingLimitRequest) -> Result<(), u32>
         return Err(ErrorCode::INVALID_LIMIT);
     }
 
+    // Validate reset window duration.
+    if !is_valid_reset_window(request.reset_window_seconds) {
+        return Err(ErrorCode::INVALID_LIMIT);
+    }
+
     // Validate category if provided
     // In Soroban, symbols are always valid by construction
     // This check exists for consistency with validation patterns
 
     Ok(())
+}
+
+/// Validates the configured reset window duration for spending limits.
+fn is_valid_reset_window(window: u64) -> bool {
+    window >= MIN_RESET_WINDOW_SECONDS && window <= MAX_RESET_WINDOW_SECONDS
 }
 
 /// Validates that an address is valid.
@@ -57,6 +74,7 @@ mod tests {
         SpendingLimitRequest {
             user: Address::generate(env),
             monthly_limit: 100_000_000_000, // 10,000 XLM
+            reset_window_seconds: MIN_RESET_WINDOW_SECONDS,
             category: Some(symbol_short!("general")),
         }
     }
