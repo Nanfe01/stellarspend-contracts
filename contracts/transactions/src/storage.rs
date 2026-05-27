@@ -398,6 +398,21 @@ pub fn get_total_income(env: &Env) -> i128 {
     total
 }
 
+/// Get the total expense from all transactions
+pub fn get_total_expense(env: &Env) -> i128 {
+    let all_txs = get_all_transactions(env);
+    let mut total: i128 = 0;
+    let expense_symbol = Symbol::new(env, "expense");
+
+    for tx in all_txs.iter() {
+        if tx.tx_type == expense_symbol {
+            total += tx.amount;
+        }
+    }
+
+    total
+}
+
 /// Get a paginated subset of all transactions.
 ///
 /// - `offset`: number of transactions to skip (0-based)

@@ -172,6 +172,11 @@ impl TransactionsContract {
     pub fn get_total_income(env: Env) -> i128 {
         storage::get_total_income(&env)
     }
+
+    /// Get the total expense from all transactions
+    pub fn get_total_expense(env: Env) -> i128 {
+        storage::get_total_expense(&env)
+    }
     
     /// Get a paginated subset of all transactions.
     ///

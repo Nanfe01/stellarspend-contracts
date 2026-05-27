@@ -588,3 +588,31 @@ fn test_get_user_transactions_filtered_by_tx_type() {
     assert_eq!(expense_txs.len(), 1);
     assert_eq!(expense_txs.get(0).unwrap().id, expense_tx);
 }
+
+#[test]
+fn test_get_total_expense() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register(TransactionsContract, ());
+    let client = TransactionsContractClient::new(&env, &contract_id);
+    client.initialize(&admin);
+
+    let user = Address::generate(&env);
+    let to = Address::generate(&env);
+    let note = String::from_str(&env, "note");
+    let memo = String::from_str(&env, "memo");
+    let tags = Vec::new(&env);
+    let income = Symbol::new(&env, "income");
+    let expense = Symbol::new(&env, "expense");
+
+    // No transactions yet
+    assert_eq!(client.get_total_expense(), 0);
+
+    client.create_transaction(&user, &to, &200, &note, &memo, &tags, &income);
+    client.create_transaction(&user, &to, &50, &note, &memo, &tags, &expense);
+    client.create_transaction(&user, &to, &30, &note, &memo, &tags, &expense);
+
+    // Only expense amounts should be summed
+    assert_eq!(client.get_total_expense(), 80);
+}
