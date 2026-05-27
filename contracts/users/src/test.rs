@@ -298,6 +298,56 @@ fn test_deactivate_user_marks_user_inactive() {
     assert!(!client.is_user_active(&user));
 }
 
+#[test]
+fn test_get_user_settings_empty_state() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register(UsersContract, ());
+    let client = UsersContractClient::new(&env, &contract_id);
+
+    client.initialize(&admin);
+
+    // User has never been registered — empty state should return defaults
+    let stranger = Address::generate(&env);
+    let settings = client.get_user_settings(&stranger);
+
+    assert!(!settings.is_active);
+    assert_eq!(settings.currency, String::from_str(&env, "USD"));
+    assert!(settings.default_currency.is_none());
+    assert!(settings.last_login.is_none());
+    assert!(settings.nickname.is_none());
+}
+
+#[test]
+fn test_get_user_settings_returns_saved_values() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register(UsersContract, ());
+    let client = UsersContractClient::new(&env, &contract_id);
+
+    client.initialize(&admin);
+
+    let user = Address::generate(&env);
+    client.register_user(&user);
+
+    let currency = String::from_str(&env, "EUR");
+    let nickname = String::from_str(&env, "alice");
+
+    client.set_user_currency(&user, &currency);
+    client.set_default_currency(&user, &currency);
+    client.update_nickname(&user, &nickname);
+
+    let settings = client.get_user_settings(&user);
+
+    assert!(settings.is_active);
+    assert_eq!(settings.currency, currency);
+    assert_eq!(settings.default_currency, Some(currency));
+    assert!(settings.last_login.is_some());
+    assert_eq!(settings.nickname, Some(nickname));
+}
+
 
 
 

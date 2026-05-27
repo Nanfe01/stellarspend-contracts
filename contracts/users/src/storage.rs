@@ -1,5 +1,15 @@
 use soroban_sdk::{contracttype, Address, Env, Map, String, Vec};
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserSettings {
+    pub is_active: bool,
+    pub currency: String,
+    pub default_currency: Option<String>,
+    pub last_login: Option<u64>,
+    pub nickname: Option<String>,
+}
+
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
@@ -255,4 +265,33 @@ pub fn set_user_nickname(env: &Env, user: Address, nickname: String) -> bool {
         .set(&DataKey::UserNickname(user), &nickname);
     
     true
+}
+
+/// Get all stored settings for a user. Returns default/empty values if the user
+/// has no stored state (handles empty state gracefully).
+pub fn get_user_settings(env: &Env, user: Address) -> UserSettings {
+    UserSettings {
+        is_active: env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserActive(user.clone()))
+            .unwrap_or(false),
+        currency: env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserCurrency(user.clone()))
+            .unwrap_or_else(|| String::from_str(env, "USD")),
+        default_currency: env
+            .storage()
+            .persistent()
+            .get(&DataKey::DefaultCurrency(user.clone())),
+        last_login: env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserLastLogin(user.clone())),
+        nickname: env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserNickname(user)),
+    }
 }

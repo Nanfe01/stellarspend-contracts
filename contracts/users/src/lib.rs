@@ -8,7 +8,7 @@ use soroban_sdk::{
 mod storage;
 
 pub use storage::{
-    
+    UserSettings,
     add_user, deactivate_user as storage_deactivate_user, get_all_users, get_default_currency,
     get_user_count as storage_get_user_count, is_user_active, reset_user_data,
     set_default_currency, user_exists,
@@ -16,6 +16,7 @@ pub use storage::{
     get_user_currency, set_user_currency,
     get_user_last_login, set_user_last_login,
     get_user_nickname, set_user_nickname,
+    get_user_settings,
 };
 
 #[cfg(test)]
@@ -279,6 +280,15 @@ impl UsersContract {
     /// Get the user's nickname.
     pub fn get_user_nickname(env: Env, user: Address) -> Option<String> {
         get_user_nickname(&env, user)
+    }
+
+    /// Retrieve all stored settings for a user.
+    ///
+    /// Returns a `UserSettings` struct with all known preference fields.
+    /// If the user has no stored state (empty state), sensible defaults are
+    /// returned rather than panicking.
+    pub fn get_user_settings(env: Env, user: Address) -> UserSettings {
+        get_user_settings(&env, user)
     }
 
     /// Update the calling user's nickname.
