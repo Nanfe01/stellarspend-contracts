@@ -27,8 +27,9 @@ mod validation;
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Vec};
 
 pub use crate::types::{
-    BatchLimitMetrics, BatchLimitResult, DataKey, ErrorCode, LimitEvents, LimitUpdateResult,
-    SpendingLimit, SpendingLimitRequest, MAX_BATCH_SIZE,
+    BatchLimitMetrics, BatchLimitResult, BudgetCategory, DataKey, ErrorCode,
+    EscalationConfig, EscalationLevel, LimitEvents, LimitUpdateResult, SpendingLimit,
+    SpendingLimitRequest, MAX_BATCH_SIZE,
 };
 use crate::validation::validate_limit_request;
 
@@ -260,13 +261,87 @@ impl SpendingLimitsContract {
         }
     }
 
-    /// Enforces the configured daily and monthly spending limits for a user.
+    /// Configures escalation rules for spending enforcement.
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `admin` - Admin address (must authorize)
+    /// * `small_threshold` - Amount below which spends are "small" (auto-approved)
+    /// * `medium_threshold` - Amount below which spends are "medium" (logged)
+    ///   Spends at or above this threshold are "large" and require admin approval
+    /// * `enabled` - Whether escalation rules are active
+    pub fn configure_escalation_rules(
+        env: Env,
+        admin: Address,
+        small_threshold: i128,
+        medium_threshold: i128,
+        enabled: bool,
+    ) {
+        admin.require_auth();
+        Self::require_admin(&env, &admin);
+
+        if small_threshold <= 0 || medium_threshold <= small_threshold {
+            panic_with_error!(&env, SpendingLimitError::InvalidAmount);
+        }
+
+        let config = EscalationConfig {
+            small_threshold,
+            medium_threshold,
+            enabled,
+        };
+
+        env.storage()
+            .instance()
+            .set(&DataKey::EscalationConfig, &config);
+
+        LimitEvents::escalation_configured(&env, small_threshold, medium_threshold, enabled);
+    }
+
+    /// Returns the current escalation configuration.
+    pub fn get_escalation_config(env: Env) -> Option<EscalationConfig> {
+        env.storage()
+            .instance()
+            .get(&DataKey::EscalationConfig)
+    }
+
+    /// Admin approves a large spend that was escalated.
+    ///
+    /// After approval, the spend is recorded against the user's limits
+    /// as though it passed normal enforcement.
+    pub fn approve_escalated_spend(env: Env, admin: Address, user: Address, amount: i128) {
+        admin.require_auth();
+        Self::require_admin(&env, &admin);
+
+        // Record the spend against the user's limits
+        let mut limit: SpendingLimit = match env
+            .storage()
+            .persistent()
+            .get(&DataKey::SpendingLimit(user.clone()))
+        {
+            Some(l) => l,
+            None => panic_with_error!(&env, SpendingLimitError::InvalidAmount),
+        };
+
+        limit.current_spending = limit.current_spending.checked_add(amount).unwrap_or(i128::MAX);
+        limit.updated_at = env.ledger().timestamp();
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::SpendingLimit(user.clone()), &limit);
+
+        LimitEvents::escalation_approved(&env, &admin, &user, amount);
+    }
+
+    /// Enforces the configured daily and monthly spending limits for a user,
+    /// including escalation tier checks.
     ///
     /// This function:
     /// - Tracks per-user daily and monthly totals using the current ledger timestamp.
+    /// - Checks escalation tiers: small (auto), medium (logged), large (requires approval).
     /// - Rejects spends that would exceed either the derived daily limit or the stored
     ///   monthly limit.
     /// - Emits a `limit_exceeded` event when a violation occurs.
+    /// - Emits an `escalation_triggered` event for medium/large spends.
     ///
     /// If no limit is configured for the user or the limit is inactive, the spend is
     /// allowed and no state is updated.
@@ -274,6 +349,27 @@ impl SpendingLimitsContract {
         // Validate amount
         if amount <= 0 {
             panic_with_error!(&env, SpendingLimitError::InvalidAmount);
+        }
+
+        // ---- Escalation tier check ----
+        // Check if escalation rules are configured and enforce tiered approval.
+        let escalation_config: Option<EscalationConfig> = env
+            .storage()
+            .instance()
+            .get(&DataKey::EscalationConfig);
+
+        if let Some(config) = escalation_config {
+            if config.enabled {
+                if amount >= config.medium_threshold {
+                    // Large spend — requires admin approval via approve_escalated_spend()
+                    LimitEvents::escalation_triggered(&env, &user, amount, 2);
+                    return;
+                } else if amount >= config.small_threshold {
+                    // Medium spend — logged but automatically approved below
+                    LimitEvents::escalation_triggered(&env, &user, amount, 1);
+                }
+                // Small spend (< small_threshold) — normal processing continues below
+            }
         }
 
         // Look up configured limit; if none, there is nothing to enforce.
