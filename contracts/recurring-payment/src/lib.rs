@@ -57,6 +57,7 @@ impl RecurringPaymentContract {
             interval,
             next_execution: start_time,
             active: true,
+            execution_count: 0,
         };
 
         env.storage()
@@ -106,6 +107,9 @@ impl RecurringPaymentContract {
             let intervals_passed = (current_time - payment.next_execution) / payment.interval;
             payment.next_execution += (intervals_passed + 1) * payment.interval;
         }
+
+        // Increment execution counter
+        payment.execution_count += 1;
 
         env.storage()
             .instance()

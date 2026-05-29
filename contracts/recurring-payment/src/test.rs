@@ -43,6 +43,7 @@ fn test_recurring_payment_flow() {
     assert_eq!(payment.amount, amount);
     assert_eq!(payment.next_execution, start_time);
     assert!(payment.active);
+    assert_eq!(payment.execution_count, 0);
 
     // 2. Try to execute too early
     env.ledger().set_timestamp(start_time - 1);
@@ -57,6 +58,7 @@ fn test_recurring_payment_flow() {
 
     let payment = client.get_payment(&payment_id);
     assert_eq!(payment.next_execution, start_time + interval);
+    assert_eq!(payment.execution_count, 1);
 
     // 4. Cancel payment
     client.cancel_payment(&payment_id);
@@ -119,4 +121,5 @@ fn test_execute_with_delay() {
     // next_execution should be start_time + 3 * interval
     assert_eq!(payment.next_execution, start_time + 3 * interval);
     assert_eq!(token_client.balance(&recipient), 1000);
+    assert_eq!(payment.execution_count, 1);
 }
