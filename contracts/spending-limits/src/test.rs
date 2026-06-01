@@ -616,3 +616,140 @@ fn uncategorized_budgets_are_excluded_from_category_filter() {
     // filter FOOD
     // assert empty
 }
+
+
+#[test]
+fn test_admin_can_override_spending_limit() {
+    let (env, admin, client) = setup_test_contract();
+
+    let user = Address::generate(&env);
+
+    let mut requests = Vec::new(&env);
+
+    requests.push_back(
+        create_valid_request(&env, &user, 50_000)
+    );
+
+    client.batch_update_spending_limits(
+        &admin,
+        &requests,
+    );
+
+    let before = client
+        .get_spending_limit(&user)
+        .unwrap();
+
+    assert_eq!(before.monthly_limit, 50_000);
+
+    client.override_spending_limit(
+        &admin,
+        &user,
+        &100_000,
+    );
+
+    let after = client
+        .get_spending_limit(&user)
+        .unwrap();
+
+    assert_eq!(after.monthly_limit, 100_000);
+}
+
+#[test]
+#[should_panic]
+fn test_non_admin_cannot_override_limit() {
+    let (env, admin, client) = setup_test_contract();
+
+    let user = Address::generate(&env);
+    let attacker = Address::generate(&env);
+
+    let mut requests = Vec::new(&env);
+
+    requests.push_back(
+        create_valid_request(&env, &user, 50_000)
+    );
+
+    client.batch_update_spending_limits(
+        &admin,
+        &requests,
+    );
+
+    client.override_spending_limit(
+        &attacker,
+        &user,
+        &100_000,
+    );
+}
+
+#[test]
+fn test_override_emits_audit_event() {
+    let (env, admin, client) = setup_test_contract();
+
+    let user = Address::generate(&env);
+
+    let mut requests = Vec::new(&env);
+
+    requests.push_back(
+        create_valid_request(&env, &user, 50_000)
+    );
+
+    client.batch_update_spending_limits(
+        &admin,
+        &requests,
+    );
+
+    client.override_spending_limit(
+        &admin,
+        &user,
+        &100_000,
+    );
+
+    let events = env.events().all();
+
+    assert!(!events.is_empty());
+
+    let found = events.iter().any(|event| {
+        format!("{:?}", event).contains("override")
+    });
+
+    assert!(found);
+}
+
+#[test]
+fn test_override_changes_enforcement_limit() {
+    let (env, admin, client) = setup_test_contract();
+
+    let user = Address::generate(&env);
+
+    client.whitelist_destination(
+        &admin,
+        &user,
+    );
+
+    let mut requests = Vec::new(&env);
+
+    let mut req =
+        create_valid_request(&env, &user, 100);
+
+    req.daily_limit = 100;
+    req.hourly_limit = 100;
+
+    requests.push_back(req);
+
+    client.batch_update_spending_limits(
+        &admin,
+        &requests,
+    );
+
+    client.override_spending_limit(
+        &admin,
+        &user,
+        &500,
+    );
+
+    let updated = client
+        .get_spending_limit(&user)
+        .unwrap();
+
+    assert_eq!(updated.monthly_limit, 500);
+}
+}

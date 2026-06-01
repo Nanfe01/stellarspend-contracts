@@ -645,6 +645,43 @@ impl SpendingLimitsContract {
             .persistent()
             .has(&CrossContractDataKey::Whitelist(destination.clone()))
     }
+
+    pub fn override_spending_limit(
+        env: Env,
+        admin: Address,
+        user: Address,
+        new_monthly_limit: i128,
+    ) {
+        admin.require_auth();
+    
+        Self::require_admin(&env, &admin);
+    
+        if new_monthly_limit <= 0 {
+            panic_with_error!(&env, SpendingLimitError::InvalidAmount);
+        }
+    
+        let mut limit: SpendingLimit = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SpendingLimit(user.clone()))
+            .expect("Spending limit not found");
+    
+        let old_limit = limit.monthly_limit;
+    
+        limit.monthly_limit = new_monthly_limit;
+    
+        env.storage()
+            .persistent()
+            .set(&DataKey::SpendingLimit(user.clone()), &limit);
+    
+        LimitEvents::spending_limit_overridden(
+            &env,
+            &admin,
+            &user,
+            old_limit,
+            new_monthly_limit,
+        );
+    }
 }
 
 #[cfg(test)]

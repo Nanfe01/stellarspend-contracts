@@ -268,4 +268,27 @@ impl LimitEvents {
             (admin.clone(), user.clone(), amount),
         );
     }
+
+    pub fn spending_limit_overridden(
+        env: &Env,
+        admin: &Address,
+        user: &Address,
+        old_limit: i128,
+        new_limit: i128,
+    ) {
+        let topics = (
+            symbol_short!("limit"),
+            symbol_short!("override"),
+        );
+    
+        env.events().publish(
+            topics,
+            (
+                admin.clone(),
+                user.clone(),
+                old_limit,
+                new_limit,
+            ),
+        );
+    }
 }
