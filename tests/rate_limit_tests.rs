@@ -2,7 +2,10 @@
 
 #![cfg(test)]
 
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env,
+};
 
 #[path = "../contracts/rate_limit.rs"]
 mod rate_limit;
@@ -20,7 +23,7 @@ fn setup_env() -> (Env, Address) {
 fn test_within_limit() {
     let (env, contract_id) = setup_env();
     let wallet = Address::generate(&env);
-    
+
     env.as_contract(&contract_id, || {
         for _ in 0..5 {
             let result = RateLimitContract::check_and_record(env.clone(), wallet.clone());
@@ -33,7 +36,7 @@ fn test_within_limit() {
 fn test_exceed_limit() {
     let (env, contract_id) = setup_env();
     let wallet = Address::generate(&env);
-    
+
     env.as_contract(&contract_id, || {
         for _ in 0..5 {
             let result = RateLimitContract::check_and_record(env.clone(), wallet.clone());
@@ -48,7 +51,7 @@ fn test_exceed_limit() {
 fn test_new_window_resets_limit() {
     let (env, contract_id) = setup_env();
     let wallet = Address::generate(&env);
-    
+
     env.as_contract(&contract_id, || {
         for _ in 0..5 {
             let result = RateLimitContract::check_and_record(env.clone(), wallet.clone());
@@ -66,7 +69,7 @@ fn test_multiple_wallets_independent_limits() {
     let (env, contract_id) = setup_env();
     let wallet1 = Address::generate(&env);
     let wallet2 = Address::generate(&env);
-    
+
     env.as_contract(&contract_id, || {
         for _ in 0..5 {
             assert!(RateLimitContract::check_and_record(env.clone(), wallet1.clone()).is_ok());

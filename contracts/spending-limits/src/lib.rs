@@ -457,7 +457,9 @@ impl SpendingLimitsContract {
         {
             let old_limit = limit.monthly_limit;
             let increment = limit.monthly_limit / 10;
-            let proposed_limit = old_limit.checked_add(increment).unwrap_or(crate::types::MAX_SPENDING_LIMIT);
+            let proposed_limit = old_limit
+                .checked_add(increment)
+                .unwrap_or(crate::types::MAX_SPENDING_LIMIT);
 
             limit.monthly_limit = if proposed_limit > crate::types::MAX_SPENDING_LIMIT {
                 crate::types::MAX_SPENDING_LIMIT

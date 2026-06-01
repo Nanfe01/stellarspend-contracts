@@ -141,7 +141,13 @@ fn test_contribution_with_memo() {
     let creator = Address::generate(&env);
     let contributor = Address::generate(&env);
     let budget_name = Symbol::new(&env, "memo_budget");
-    let budget_id = client.create_budget(&creator, &budget_name, &Vec::new(&env), &token, &Vec::new(&env));
+    let budget_id = client.create_budget(
+        &creator,
+        &budget_name,
+        &Vec::new(&env),
+        &token,
+        &Vec::new(&env),
+    );
 
     let amount = 100_000_000;
     let memo = Some(Symbol::new(&env, "lunch_contribution"));
@@ -359,8 +365,7 @@ fn test_transfer_budget_ownership() {
 
     let budget_name = Symbol::new(&env, "transfer_budget");
     let spending_rules: Vec<BudgetSpendingRule> = Vec::new(&env);
-    let budget_id =
-        client.create_budget(&creator, &budget_name, &members, &token, &spending_rules);
+    let budget_id = client.create_budget(&creator, &budget_name, &members, &token, &spending_rules);
 
     client.transfer_budget_ownership(&creator, &budget_id, &new_owner);
 
@@ -389,8 +394,7 @@ fn test_previous_owner_cannot_manage_budget_after_transfer() {
 
     let budget_name = Symbol::new(&env, "post_transfer_budget");
     let spending_rules: Vec<BudgetSpendingRule> = Vec::new(&env);
-    let budget_id =
-        client.create_budget(&creator, &budget_name, &members, &token, &spending_rules);
+    let budget_id = client.create_budget(&creator, &budget_name, &members, &token, &spending_rules);
 
     client.transfer_budget_ownership(&creator, &budget_id, &new_owner);
 

@@ -1,6 +1,6 @@
 //! Rate limit logic for wallet transaction frequency.
 
-use soroban_sdk::{contract, contractimpl, contracterror, contracttype, Address, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env};
 
 const DEFAULT_LIMIT: u32 = 5; // Default max transactions per window
 const DEFAULT_WINDOW_SECONDS: u64 = 3600; // 1 hour window
@@ -38,7 +38,7 @@ impl Default for RateLimitConfig {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
     Config,
-    RateLimitCount(Address, u64),  // (wallet, window_start)
+    RateLimitCount(Address, u64), // (wallet, window_start)
 }
 
 #[contract]
@@ -62,13 +62,15 @@ impl RateLimitContract {
         let count: u32 = env.storage().persistent().get(&key).unwrap_or(0);
 
         if count >= config.max_tx {
-            env.events().publish(("rate_limit_exceeded", wallet.clone()), count);
+            env.events()
+                .publish(("rate_limit_exceeded", wallet.clone()), count);
             return Err(RateLimitError::Exceeded);
         }
 
         if count >= config.warn_threshold {
             // Emit warning event; if overspend is allowed we still record the tx.
-            env.events().publish(("rate_limit_warning", wallet.clone()), count);
+            env.events()
+                .publish(("rate_limit_warning", wallet.clone()), count);
             if !config.allow_overspend {
                 return Err(RateLimitError::SoftLimitReached);
             }
@@ -96,6 +98,7 @@ impl RateLimitContract {
             allow_overspend,
         };
         env.storage().persistent().set(&DataKey::Config, &cfg);
-        env.events().publish(("rate_limit_config", caller), cfg.max_tx);
+        env.events()
+            .publish(("rate_limit_config", caller), cfg.max_tx);
     }
 }

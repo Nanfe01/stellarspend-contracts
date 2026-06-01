@@ -110,7 +110,8 @@ impl SharedBudgetEvents {
         memo: Option<Symbol>,
     ) {
         let topics = (symbol_short!("budget"), symbol_short!("contrib"), budget_id);
-        env.events().publish(topics, (contributor.clone(), amount, memo));
+        env.events()
+            .publish(topics, (contributor.clone(), amount, memo));
     }
 
     /// Event emitted when an allocation fails for a recipient.
@@ -172,7 +173,11 @@ impl SharedBudgetEvents {
         previous_owner: &Address,
         new_owner: &Address,
     ) {
-        let topics = (symbol_short!("budget"), symbol_short!("xfer_own"), budget_id);
+        let topics = (
+            symbol_short!("budget"),
+            symbol_short!("xfer_own"),
+            budget_id,
+        );
         env.events()
             .publish(topics, (previous_owner.clone(), new_owner.clone()));
     }

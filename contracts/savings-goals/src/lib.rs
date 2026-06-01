@@ -606,10 +606,9 @@ impl SavingsGoalsContract {
             .instance()
             .get(&DataKey::TotalGoalsCreated)
             .unwrap_or(0);
-        env.storage().instance().set(
-            &DataKey::TotalGoalsCreated,
-            &(total_goals + 1),
-        );
+        env.storage()
+            .instance()
+            .set(&DataKey::TotalGoalsCreated, &(total_goals + 1));
 
         // Emit creation event (reusing batch 0 for manual creation)
         GoalEvents::goal_created(&env, 0, &new_goal);
