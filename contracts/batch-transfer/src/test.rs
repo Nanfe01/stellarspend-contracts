@@ -211,7 +211,7 @@ fn test_batch_transfer_rejects_duplicate_recipients() {
         TransferResult::Failure(recv, failed_amount, error_code) => {
             assert_eq!(recv.clone(), recipient);
             assert_eq!(failed_amount.clone(), amount);
-            assert_eq!(*error_code, 3); // Duplicate recipient
+            assert_eq!(error_code, 3); // Duplicate recipient
         }
         _ => panic!("Expected duplicate recipient to fail"),
     }

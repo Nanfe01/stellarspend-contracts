@@ -11,7 +11,13 @@ pub use crate::types::{
     TransferRequest, TransferResult, MAX_BATCH_SIZE,
 };
 //bbbb
-use crate::validation::{validate_address, validate_amount, validate_batch_not_empty};
+use crate::validation::{
+    validate_address,
+    validate_amount,
+    validate_batch_not_empty,
+    validate_unique_recipient,
+};
+use shared::validation::validate_batch_size;
 
 /// Error codes for the batch transfer contract.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -76,7 +82,7 @@ impl BatchTransferContract {
 
         // Validate batch size
         let request_count = transfers.len();
-        if request_count > MAX_BATCH_SIZE {
+        if validate_batch_size(request_count, MAX_BATCH_SIZE).is_err() {
             panic_with_error!(&env, BatchTransferError::BatchTooLarge);
         }
 
@@ -271,7 +277,7 @@ impl BatchTransferContract {
         }
 
         let request_count = burns.len();
-        if request_count > MAX_BATCH_SIZE {
+        if validate_batch_size(request_count, MAX_BATCH_SIZE).is_err() {
             panic_with_error!(&env, BatchTransferError::BatchTooLarge);
         }
 

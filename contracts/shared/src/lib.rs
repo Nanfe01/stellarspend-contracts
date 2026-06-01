@@ -9,6 +9,7 @@ pub mod auth;
 pub mod errors;
 pub mod sanitizer;
 pub mod utils;
+pub mod validation;
 
 pub use errors::SharedError;
 

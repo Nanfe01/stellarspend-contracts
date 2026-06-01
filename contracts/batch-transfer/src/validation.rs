@@ -1,6 +1,6 @@
 //! Validation utilities for batch transfers.
 
-use soroban_sdk::{Address, Env};
+use soroban_sdk::{Address, Env, Vec};
 
 /// Validation error types.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub fn validate_unique_recipient(
     recipient: &Address,
 ) -> Result<(), ValidationError> {
     for existing in seen.iter() {
-        if existing == recipient {
+        if *existing == *recipient {
             return Err(ValidationError::DuplicateRecipient(recipient.clone()));
         }
     }
