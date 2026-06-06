@@ -84,10 +84,8 @@ pub struct SpendingLimit {
     pub daily_limit: i128,
     /// Hourly spending limit (in stroops)
     pub hourly_limit: i128,
-   
 
     /// Reset window in seconds
-
     pub reset_window_seconds: u64,
     /// Current spending tracked in this period
     pub current_spending: i128,
@@ -303,38 +301,31 @@ impl LimitEvents {
         old_limit: i128,
         new_limit: i128,
     ) {
-        let topics = (
-            symbol_short!("limit"),
-            symbol_short!("override"),
-        );
-    
-        env.events().publish(
-            topics,
-            (
-                admin.clone(),
-                user.clone(),
-                old_limit,
-                new_limit,
-            ),
-        );
+        let topics = (symbol_short!("limit"), symbol_short!("override"));
+
+        env.events()
+            .publish(topics, (admin.clone(), user.clone(), old_limit, new_limit));
     }
 
     /// Event emitted when an exception rule is granted to a user for a category.
     pub fn exception_added(env: &Env, user: &Address, category: &Symbol) {
         let topics = (symbol_short!("exception"), symbol_short!("added"));
-        env.events().publish(topics, (user.clone(), category.clone()));
+        env.events()
+            .publish(topics, (user.clone(), category.clone()));
     }
 
     /// Event emitted when an exception rule is removed for a user+category pair.
     pub fn exception_removed(env: &Env, user: &Address, category: &Symbol) {
         let topics = (symbol_short!("exception"), symbol_short!("removed"));
-        env.events().publish(topics, (user.clone(), category.clone()));
+        env.events()
+            .publish(topics, (user.clone(), category.clone()));
     }
 
     /// Event emitted when a transaction bypasses spending limits via an active exception rule.
     pub fn exception_bypassed(env: &Env, user: &Address, amount: i128, category: &Symbol) {
         let topics = (symbol_short!("exception"), symbol_short!("bypass"));
-        env.events().publish(topics, (user.clone(), amount, category.clone()));
+        env.events()
+            .publish(topics, (user.clone(), amount, category.clone()));
     }
 
     /// Event emitted when an approved category is added to the exception allow-list.

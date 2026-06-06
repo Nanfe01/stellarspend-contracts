@@ -25,7 +25,12 @@ impl BatchPaymentContract {
     ///
     /// # Returns
     /// A reference ID string for tracking this batch payment.
-    pub fn batch_transfer(env: Env, from: Address, token: Address, payments: Vec<Payment>) -> String {
+    pub fn batch_transfer(
+        env: Env,
+        from: Address,
+        token: Address,
+        payments: Vec<Payment>,
+    ) -> String {
         // Require authorization from the sender
         from.require_auth();
 
@@ -33,7 +38,8 @@ impl BatchPaymentContract {
 
         // Generate a unique batch reference ID
         let batch_ref_counter_key = Symbol::new(&env, "batch_ref_counter");
-        let batch_reference_id = generate_transaction_reference_id(&env, &from, &batch_ref_counter_key);
+        let batch_reference_id =
+            generate_transaction_reference_id(&env, &from, &batch_ref_counter_key);
 
         let mut total_amount: i128 = 0;
         let mut count: u32 = 0;

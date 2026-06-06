@@ -591,26 +591,22 @@ impl SharedBudgetContract {
             panic_with_error!(env, SharedBudgetError::Unauthorized);
         }
     }
-    
-    /// Returns all contributions made to a specific budget, in chronological order.
-///
-/// Returns an empty Vec if the budget exists but has received no contributions.
-/// Panics with `BudgetNotFound` if the budget does not exist.
-pub fn get_contributions(env: Env, budget_id: u64) -> Vec<BudgetContribution> {
-    let contribution_ids = Self::get_budget_contribution_ids(&env, budget_id);
 
-    let mut result: Vec<BudgetContribution> = Vec::new(&env);
-    for id in contribution_ids.iter() {
-        if let Some(contrib) = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Contribution(id))
-        {
-            result.push_back(contrib);
+    /// Returns all contributions made to a specific budget, in chronological order.
+    ///
+    /// Returns an empty Vec if the budget exists but has received no contributions.
+    /// Panics with `BudgetNotFound` if the budget does not exist.
+    pub fn get_contributions(env: Env, budget_id: u64) -> Vec<BudgetContribution> {
+        let contribution_ids = Self::get_budget_contribution_ids(&env, budget_id);
+
+        let mut result: Vec<BudgetContribution> = Vec::new(&env);
+        for id in contribution_ids.iter() {
+            if let Some(contrib) = env.storage().persistent().get(&DataKey::Contribution(id)) {
+                result.push_back(contrib);
+            }
         }
+        result
     }
-    result
-}
 }
 
 #[cfg(test)]

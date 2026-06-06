@@ -7,8 +7,8 @@ mod validation;
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Vec};
 
 pub use crate::types::{
-    BatchCreateResult, BatchRecoveryResult, DataKey, Wallet, WalletCreatedEvent,
-    WalletCreateRequest, WalletCreateResult, WalletEvents, WalletRecoveryRequest,
+    BatchCreateResult, BatchRecoveryResult, DataKey, Wallet, WalletCreateRequest,
+    WalletCreateResult, WalletCreatedEvent, WalletEvents, WalletRecoveryRequest,
     WalletRecoveryResult, MAX_BATCH_SIZE,
 };
 use crate::validation::{check_batch_duplicates, validate_address, wallet_exists};

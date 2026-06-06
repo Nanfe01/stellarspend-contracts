@@ -723,9 +723,10 @@ impl SpendingLimitsContract {
             is_active: true,
         };
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::ExceptionRule(user.clone(), category.clone()), &rule);
+        env.storage().persistent().set(
+            &DataKey::ExceptionRule(user.clone(), category.clone()),
+            &rule,
+        );
 
         LimitEvents::exception_added(&env, &user, &category);
     }
@@ -759,10 +760,8 @@ impl SpendingLimitsContract {
         match env
             .storage()
             .persistent()
-            .get::<DataKey, ExceptionRule>(&DataKey::ExceptionRule(
-                user.clone(),
-                category.clone(),
-            )) {
+            .get::<DataKey, ExceptionRule>(&DataKey::ExceptionRule(user.clone(), category.clone()))
+        {
             Some(rule) => rule.is_active,
             None => false,
         }
@@ -797,34 +796,28 @@ impl SpendingLimitsContract {
         new_monthly_limit: i128,
     ) {
         admin.require_auth();
-    
+
         Self::require_admin(&env, &admin);
-    
+
         if new_monthly_limit <= 0 {
             panic_with_error!(&env, SpendingLimitError::InvalidAmount);
         }
-    
+
         let mut limit: SpendingLimit = env
             .storage()
             .persistent()
             .get(&DataKey::SpendingLimit(user.clone()))
             .expect("Spending limit not found");
-    
+
         let old_limit = limit.monthly_limit;
-    
+
         limit.monthly_limit = new_monthly_limit;
-    
+
         env.storage()
             .persistent()
             .set(&DataKey::SpendingLimit(user.clone()), &limit);
-    
-        LimitEvents::spending_limit_overridden(
-            &env,
-            &admin,
-            &user,
-            old_limit,
-            new_monthly_limit,
-        );
+
+        LimitEvents::spending_limit_overridden(&env, &admin, &user, old_limit, new_monthly_limit);
     }
 }
 

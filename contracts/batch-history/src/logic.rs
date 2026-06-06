@@ -1,11 +1,5 @@
 use crate::types::UserHistory;
-use soroban_sdk::{
-    contracttype,
-    symbol_short,
-    Address,
-    Env,
-    Vec,
-};
+use soroban_sdk::{contracttype, symbol_short, Address, Env, Vec};
 
 /// Maximum number of users allowed in a single batch request.
 pub const MAX_BATCH_SIZE: u32 = 100;
@@ -23,10 +17,7 @@ pub struct UserHistoryRetrievedEvent {
     pub user: Address,
 }
 
-pub fn get_batch_history(
-    env: &Env,
-    users: Vec<Address>,
-) -> Vec<UserHistory> {
+pub fn get_batch_history(env: &Env, users: Vec<Address>) -> Vec<UserHistory> {
     // Early return for empty batches.
     if users.is_empty() {
         return Vec::new(env);
@@ -56,13 +47,8 @@ pub fn get_batch_history(
 
         // Emit structured event for indexers.
         env.events().publish(
-            (
-                symbol_short!("history"),
-                symbol_short!("user"),
-            ),
-            UserHistoryRetrievedEvent {
-                user: user.clone(),
-            },
+            (symbol_short!("history"), symbol_short!("user")),
+            UserHistoryRetrievedEvent { user: user.clone() },
         );
 
         results.push_back(history);
@@ -70,10 +56,7 @@ pub fn get_batch_history(
 
     // Emit aggregate batch event.
     env.events().publish(
-        (
-            symbol_short!("history"),
-            symbol_short!("batch"),
-        ),
+        (symbol_short!("history"), symbol_short!("batch")),
         BatchHistoryRetrievedEvent {
             requested_users: users.len(),
             returned_records: results.len(),

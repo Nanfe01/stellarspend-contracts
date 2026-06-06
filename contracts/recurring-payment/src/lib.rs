@@ -1,4 +1,4 @@
-﻿#![no_std]
+#![no_std]
 
 #[cfg(test)]
 mod test;
@@ -366,5 +366,3 @@ impl RecurringPaymentContract {
             .unwrap_or(Vec::new(&env))
     }
 }
-
-

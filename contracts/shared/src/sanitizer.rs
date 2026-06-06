@@ -106,10 +106,7 @@ mod tests {
         for text in invalid_cases {
             let value = make_string(&env, text);
 
-            assert_eq!(
-                sanitize_description(&value),
-                Err(SharedError::InvalidInput)
-            );
+            assert_eq!(sanitize_description(&value), Err(SharedError::InvalidInput));
         }
     }
 
@@ -154,9 +151,6 @@ mod tests {
 
         let value = make_string(&env, "Café");
 
-        assert_eq!(
-            sanitize_description(&value),
-            Err(SharedError::InvalidInput)
-        );
+        assert_eq!(sanitize_description(&value), Err(SharedError::InvalidInput));
     }
 }

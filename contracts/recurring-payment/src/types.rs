@@ -1,4 +1,4 @@
-﻿use soroban_sdk::{contracttype, Address, Vec};
+use soroban_sdk::{contracttype, Address, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -47,4 +47,3 @@ pub struct IncomeStream {
     /// Whether the stream is active
     pub active: bool,
 }
-

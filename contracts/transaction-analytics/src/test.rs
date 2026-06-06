@@ -3,9 +3,9 @@
 #![cfg(test)]
 
 use crate::{
-    BundleResult, BundledTransaction, MAX_PAGE_SIZE, RefundRequest, RefundStatus, Transaction,
+    BundleResult, BundledTransaction, RefundRequest, RefundStatus, Transaction,
     TransactionAnalyticsContract, TransactionAnalyticsContractClient, TransactionStatus,
-    TransactionStatusUpdate, ValidationResult,
+    TransactionStatusUpdate, ValidationResult, MAX_PAGE_SIZE,
 };
 use soroban_sdk::{
     testutils::{Address as _, Events},
@@ -266,7 +266,12 @@ fn test_get_batch_metrics_paginated_returns_correct_page() {
 
     for tx_id in 1..=5 {
         let mut transactions: Vec<Transaction> = Vec::new(&env);
-        transactions.push_back(create_transaction(&env, tx_id, tx_id as i128 * 100, "transfer"));
+        transactions.push_back(create_transaction(
+            &env,
+            tx_id,
+            tx_id as i128 * 100,
+            "transfer",
+        ));
         client.process_batch(&admin, &transactions, &None);
     }
 
@@ -295,7 +300,12 @@ fn test_get_batch_metrics_paginated_empty_page_returns_empty_array() {
 
     for tx_id in 1..=2 {
         let mut transactions: Vec<Transaction> = Vec::new(&env);
-        transactions.push_back(create_transaction(&env, tx_id, tx_id as i128 * 100, "transfer"));
+        transactions.push_back(create_transaction(
+            &env,
+            tx_id,
+            tx_id as i128 * 100,
+            "transfer",
+        ));
         client.process_batch(&admin, &transactions, &None);
     }
 
@@ -312,7 +322,12 @@ fn test_get_batch_metrics_paginated_page_size_capped_at_maximum() {
 
     for tx_id in 1..=3 {
         let mut transactions: Vec<Transaction> = Vec::new(&env);
-        transactions.push_back(create_transaction(&env, tx_id, tx_id as i128 * 100, "transfer"));
+        transactions.push_back(create_transaction(
+            &env,
+            tx_id,
+            tx_id as i128 * 100,
+            "transfer",
+        ));
         client.process_batch(&admin, &transactions, &None);
     }
 

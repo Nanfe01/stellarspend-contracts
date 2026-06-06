@@ -7,7 +7,8 @@ use crate::{
     WalletCreateRequest, WalletCreateResult, WalletRecoveryRequest, WalletRecoveryResult,
 };
 use soroban_sdk::{
-    symbol_short, testutils::{Address as _, Events as _, Ledger},
+    symbol_short,
+    testutils::{Address as _, Events as _, Ledger},
     Address, Env, Symbol, TryFromVal, Vec,
 };
 
@@ -170,7 +171,12 @@ fn test_batch_create_wallets_partial_failures() {
     assert_eq!(wallet3.id, 3); // IDs continue from previous batch
 }
 
-fn event_has_topics(env: &Env, event: &(soroban_sdk::Val, Vec<soroban_sdk::Val>), topic0: Symbol, topic1: Symbol) -> bool {
+fn event_has_topics(
+    env: &Env,
+    event: &(soroban_sdk::Val, Vec<soroban_sdk::Val>),
+    topic0: Symbol,
+    topic1: Symbol,
+) -> bool {
     if event.1.len() < 2 {
         return false;
     }
@@ -194,9 +200,17 @@ fn test_batch_create_wallets_events_emitted() {
 
     let events = env.events().all();
     assert!(events.len() >= 4);
-    let wallet_created_events = events.iter().filter(|event| {
-        event_has_topics(&env, event, symbol_short!("wallet"), symbol_short!("created"))
-    }).count();
+    let wallet_created_events = events
+        .iter()
+        .filter(|event| {
+            event_has_topics(
+                &env,
+                event,
+                symbol_short!("wallet"),
+                symbol_short!("created"),
+            )
+        })
+        .count();
     assert_eq!(wallet_created_events, 2);
 }
 
@@ -218,12 +232,28 @@ fn test_failed_wallet_creation_does_not_emit_success_event() {
     client.batch_create_wallets(&admin, &requests2);
 
     let events = env.events().all();
-    let created_events = events.iter().filter(|event| {
-        event_has_topics(&env, event, symbol_short!("wallet"), symbol_short!("created"))
-    }).count();
-    let failure_events = events.iter().filter(|event| {
-        event_has_topics(&env, event, symbol_short!("wallet"), symbol_short!("failure"))
-    }).count();
+    let created_events = events
+        .iter()
+        .filter(|event| {
+            event_has_topics(
+                &env,
+                event,
+                symbol_short!("wallet"),
+                symbol_short!("created"),
+            )
+        })
+        .count();
+    let failure_events = events
+        .iter()
+        .filter(|event| {
+            event_has_topics(
+                &env,
+                event,
+                symbol_short!("wallet"),
+                symbol_short!("failure"),
+            )
+        })
+        .count();
 
     assert_eq!(created_events, 2); // one from first batch, one from second batch success
     assert_eq!(failure_events, 1);

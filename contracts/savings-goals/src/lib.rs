@@ -29,9 +29,9 @@ use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Symbol
 
 pub use crate::types::{
     BatchGoalMetrics, BatchGoalResult, BatchMilestoneMetrics, BatchMilestoneResult,
-    ContributionRecord, DataKey, ErrorCode, GoalEvents, GoalResult, GoalSnapshot, MilestoneAchievement,
-    MilestoneAchievementRequest, MilestoneResult, SavingsGoal, SavingsGoalProgress,
-    SavingsGoalRequest, MAX_BATCH_SIZE, REVERSAL_PERIOD_SECS,
+    ContributionRecord, DataKey, ErrorCode, GoalEvents, GoalResult, GoalSnapshot,
+    MilestoneAchievement, MilestoneAchievementRequest, MilestoneResult, SavingsGoal,
+    SavingsGoalProgress, SavingsGoalRequest, MAX_BATCH_SIZE, REVERSAL_PERIOD_SECS,
 };
 use crate::validation::{
     validate_goal_name_unique, validate_goal_request, validate_milestone_request,
@@ -548,10 +548,8 @@ impl SavingsGoalsContract {
             .get(&DataKey::GoalPrereqs(goal_id))
             .unwrap_or(Vec::new(&env));
         for pid in prereqs.iter() {
-            let pgoal_opt: Option<SavingsGoal> = env
-                .storage()
-                .persistent()
-                .get(&DataKey::Goal(pid));
+            let pgoal_opt: Option<SavingsGoal> =
+                env.storage().persistent().get(&DataKey::Goal(pid));
             if let Some(pgoal) = pgoal_opt {
                 if !pgoal.is_complete {
                     panic_with_error!(&env, SavingsGoalError::DependencyNotMet);
@@ -562,10 +560,7 @@ impl SavingsGoalsContract {
         }
 
         // Apply contribution, capped at target to avoid overflow accumulation
-        let new_amount = goal
-            .current_amount
-            .checked_add(amount)
-            .unwrap_or(i128::MAX);
+        let new_amount = goal.current_amount.checked_add(amount).unwrap_or(i128::MAX);
         let actual_contribution = if new_amount > goal.target_amount {
             goal.target_amount.saturating_sub(goal.current_amount)
         } else {
@@ -602,7 +597,13 @@ impl SavingsGoalsContract {
             .set(&DataKey::LastContribId(goal_id), &contrib_id);
 
         Self::check_and_emit_milestones(&env, goal_id);
-        GoalEvents::goal_contributed(&env, goal_id, &caller, actual_contribution, goal.current_amount);
+        GoalEvents::goal_contributed(
+            &env,
+            goal_id,
+            &caller,
+            actual_contribution,
+            goal.current_amount,
+        );
 
         contrib_id
     }
@@ -856,7 +857,9 @@ impl SavingsGoalsContract {
         let is_complete = goal.current_amount >= goal.target_amount;
         if goal.is_complete != is_complete {
             goal.is_complete = is_complete;
-            env.storage().persistent().set(&DataKey::Goal(goal_id), &goal);
+            env.storage()
+                .persistent()
+                .set(&DataKey::Goal(goal_id), &goal);
             if is_complete {
                 GoalEvents::goal_completed(env, goal_id, &goal.user, goal.target_amount);
             }
@@ -1115,13 +1118,13 @@ impl SavingsGoalsContract {
             .persistent()
             .get(&DataKey::GoalSnapshots(goal_id))
             .unwrap_or(Vec::new(&env));
-        
+
         snapshots.push_back(snapshot);
-        
+
         env.storage()
             .persistent()
             .set(&DataKey::GoalSnapshots(goal_id), &snapshots);
-            
+
         env.storage().persistent().extend_ttl(
             &DataKey::GoalSnapshots(goal_id),
             PERSISTENT_TTL_BUMP,
@@ -1142,13 +1145,11 @@ impl SavingsGoalsContract {
     pub fn get_goal_snapshots(env: Env, goal_id: u64) -> Vec<GoalSnapshot> {
         let key = DataKey::GoalSnapshots(goal_id);
         if env.storage().persistent().has(&key) {
-            env.storage().persistent().extend_ttl(
-                &key,
-                PERSISTENT_TTL_BUMP,
-                PERSISTENT_TTL_BUMP,
-            );
+            env.storage()
+                .persistent()
+                .extend_ttl(&key, PERSISTENT_TTL_BUMP, PERSISTENT_TTL_BUMP);
         }
-        
+
         env.storage()
             .persistent()
             .get(&key)
@@ -1247,8 +1248,6 @@ impl SavingsGoalsContract {
             .get(&DataKey::TotalMilestonesAchieved)
             .unwrap_or(0)
     }
-
-
 
     /// Returns the ledger sequence at which a goal was automatically closed,
     /// or `None` if the goal has not yet been closed.

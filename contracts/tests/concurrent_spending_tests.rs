@@ -15,7 +15,6 @@ fn setup_concurrent_test() -> (Env, Address) {
     (env, admin)
 }
 
-
 #[test]
 fn test_rapid_sequential_transfers_maintain_consistency() {
     let (_env, _admin) = setup_concurrent_test();
@@ -57,7 +56,10 @@ fn test_rapid_sequential_transfers_maintain_consistency() {
     let final_total = balance1 + balance2 + balance3;
 
     // Verify total balance is conserved
-    assert_eq!(initial_total, final_total, "Total balance should be conserved");
+    assert_eq!(
+        initial_total, final_total,
+        "Total balance should be conserved"
+    );
 
     // Verify individual balances are non-negative
     assert!(balance1 >= 0, "User1 balance should be non-negative");
@@ -79,11 +81,7 @@ fn test_concurrent_transfers_from_same_source() {
 
     // Simulate multiple transfers from the same source
     // This tests that the balance checks prevent overspending
-    let transfer_amounts = vec![
-        30_000_000_000i128,
-        30_000_000_000i128,
-        30_000_000_000i128,
-    ];
+    let transfer_amounts = vec![30_000_000_000i128, 30_000_000_000i128, 30_000_000_000i128];
 
     let mut successful_transfers = 0;
     for amount in transfer_amounts {
@@ -95,12 +93,18 @@ fn test_concurrent_transfers_from_same_source() {
     }
 
     // At most 3 transfers should succeed (total 90,000,000,000 <= 100,000,000,000)
-    assert!(successful_transfers <= 3, "Should not exceed available balance");
+    assert!(
+        successful_transfers <= 3,
+        "Should not exceed available balance"
+    );
 
     let final_total = balance1 + balance2 + balance3 + balance4;
 
     // Verify total balance is conserved
-    assert_eq!(initial_total, final_total, "Total balance should be conserved");
+    assert_eq!(
+        initial_total, final_total,
+        "Total balance should be conserved"
+    );
 
     // Verify source balance is non-negative
     assert!(balance1 >= 0, "Source balance should be non-negative");
@@ -144,7 +148,10 @@ fn test_balance_invariant_after_complex_transfer_sequence() {
     let final_total: i128 = balances.iter().sum();
 
     // Verify total balance is conserved
-    assert_eq!(initial_total, final_total, "Total balance should be conserved after complex sequence");
+    assert_eq!(
+        initial_total, final_total,
+        "Total balance should be conserved after complex sequence"
+    );
 
     // Verify all balances are non-negative
     for balance in &balances {
@@ -172,13 +179,22 @@ fn test_no_double_spending_with_balance_checks() {
     }
 
     // Should fail due to insufficient balance
-    assert!(!transfer_succeeded, "Transfer exceeding balance should fail");
+    assert!(
+        !transfer_succeeded,
+        "Transfer exceeding balance should fail"
+    );
 
     let final_total = balance1 + balance2;
 
     // Verify balances unchanged
-    assert_eq!(initial_total, final_total, "Balances should remain unchanged after failed transfer");
-    assert_eq!(balance1, 50_000_000_000i128, "User1 balance should be unchanged");
+    assert_eq!(
+        initial_total, final_total,
+        "Balances should remain unchanged after failed transfer"
+    );
+    assert_eq!(
+        balance1, 50_000_000_000i128,
+        "User1 balance should be unchanged"
+    );
     assert_eq!(balance2, 0i128, "User2 balance should be unchanged");
 }
 
@@ -193,12 +209,12 @@ fn test_concurrent_deposit_and_withdraw() {
 
     // Simulate concurrent deposits and withdrawals
     let operations = vec![
-        (0, 10_000_000_000i128, true),   // deposit to user1
-        (0, 5_000_000_000i128, false),   // withdraw from user1
-        (1, 15_000_000_000i128, true),   // deposit to user2
-        (1, 20_000_000_000i128, false),  // withdraw from user2
-        (0, 25_000_000_000i128, false),  // withdraw from user1
-        (1, 10_000_000_000i128, true),   // deposit to user2
+        (0, 10_000_000_000i128, true),  // deposit to user1
+        (0, 5_000_000_000i128, false),  // withdraw from user1
+        (1, 15_000_000_000i128, true),  // deposit to user2
+        (1, 20_000_000_000i128, false), // withdraw from user2
+        (0, 25_000_000_000i128, false), // withdraw from user1
+        (1, 10_000_000_000i128, true),  // deposit to user2
     ];
 
     for (user_idx, amount, is_deposit) in operations {
@@ -230,7 +246,10 @@ fn test_concurrent_deposit_and_withdraw() {
     assert!(balance1 >= 0, "User1 balance should be non-negative");
     assert!(balance2 >= 0, "User2 balance should be non-negative");
     assert!(admin_balance >= 0, "Admin balance should be non-negative");
-    assert_eq!(185_000_000_000i128, final_total, "Total should equal initial plus deposits");
+    assert_eq!(
+        185_000_000_000i128, final_total,
+        "Total should equal initial plus deposits"
+    );
 }
 
 #[test]
@@ -256,7 +275,10 @@ fn test_transfer_to_multiple_recipients_consistency() {
     let final_total = sender_balance + recipient_balances.iter().sum::<i128>();
 
     // Verify total balance is conserved
-    assert_eq!(initial_total, final_total, "Total balance should be conserved");
+    assert_eq!(
+        initial_total, final_total,
+        "Total balance should be conserved"
+    );
 
     // Verify sender balance is non-negative
     assert!(sender_balance >= 0, "Sender balance should be non-negative");
@@ -290,7 +312,10 @@ fn test_zero_amount_transfer_safety() {
     let final_total = balance1 + balance2;
 
     // Verify balances unchanged
-    assert_eq!(initial_total, final_total, "Balances should remain unchanged");
+    assert_eq!(
+        initial_total, final_total,
+        "Balances should remain unchanged"
+    );
 }
 
 #[test]
@@ -316,7 +341,10 @@ fn test_negative_amount_transfer_rejection() {
     let final_total = balance1 + balance2;
 
     // Verify balances unchanged
-    assert_eq!(initial_total, final_total, "Balances should remain unchanged");
+    assert_eq!(
+        initial_total, final_total,
+        "Balances should remain unchanged"
+    );
 }
 
 #[test]
@@ -337,7 +365,10 @@ fn test_self_transfer_safety() {
     let final_balance = balance1;
 
     // Balance should be conserved (self transfer doesn't change total)
-    assert_eq!(initial_balance, final_balance, "Self transfer should conserve balance");
+    assert_eq!(
+        initial_balance, final_balance,
+        "Self transfer should conserve balance"
+    );
 }
 
 #[test]
@@ -353,16 +384,19 @@ fn test_high_value_transaction_multisig_protection() {
     // Simulate high-value transaction requiring multisig approval
     let transfer_amount = 50_000_000_000i128;
     let high_value_threshold = 10_000_000_000i128;
-    
+
     // Transaction is above threshold, requires multisig
     let requires_multisig = transfer_amount >= high_value_threshold;
-    assert!(requires_multisig, "High-value transaction should require multisig approval");
+    assert!(
+        requires_multisig,
+        "High-value transaction should require multisig approval"
+    );
 
     // Simulate multisig approval process
     let approvals_received = 2u32;
     let required_approvals = 2u32;
     let can_execute = approvals_received >= required_approvals;
-    
+
     if can_execute && balance1 >= transfer_amount {
         balance1 -= transfer_amount;
         balance2 += transfer_amount;
@@ -371,11 +405,20 @@ fn test_high_value_transaction_multisig_protection() {
     let final_total = balance1 + balance2;
 
     // Verify total balance is conserved
-    assert_eq!(initial_total, final_total, "Total balance should be conserved");
+    assert_eq!(
+        initial_total, final_total,
+        "Total balance should be conserved"
+    );
 
     // Verify balances updated after approval
-    assert_eq!(balance1, 50_000_000_000i128, "Sender balance should be updated");
-    assert_eq!(balance2, 50_000_000_000i128, "Recipient balance should be updated");
+    assert_eq!(
+        balance1, 50_000_000_000i128,
+        "Sender balance should be updated"
+    );
+    assert_eq!(
+        balance2, 50_000_000_000i128,
+        "Recipient balance should be updated"
+    );
 }
 
 #[test]
@@ -393,7 +436,7 @@ fn test_balance_overflow_protection() {
     // Check if adding transfer_amount to balance2 would overflow
     let would_overflow = balance2.checked_add(transfer_amount).is_none();
     let can_transfer = balance1 >= transfer_amount && !would_overflow;
-    
+
     if can_transfer {
         balance1 = balance1.checked_sub(transfer_amount).unwrap();
         balance2 = balance2.checked_add(transfer_amount).unwrap();
@@ -407,7 +450,10 @@ fn test_balance_overflow_protection() {
 
     // Verify balances unchanged from first attempt
     let final_total = balance1 + balance2;
-    assert_eq!(initial_total, final_total, "Balances should remain unchanged after overflow attempt");
+    assert_eq!(
+        initial_total, final_total,
+        "Balances should remain unchanged after overflow attempt"
+    );
 }
 
 #[test]
@@ -423,7 +469,7 @@ fn test_balance_underflow_protection() {
     // Attempt transfer larger than balance
     let transfer_amount = 10_000i128;
     let can_transfer = balance1 >= transfer_amount;
-    
+
     if can_transfer {
         balance1 -= transfer_amount;
         balance2 += transfer_amount;
@@ -434,5 +480,8 @@ fn test_balance_underflow_protection() {
 
     // Verify balances unchanged
     let final_total = balance1 + balance2;
-    assert_eq!(initial_total, final_total, "Balances should remain unchanged after underflow attempt");
+    assert_eq!(
+        initial_total, final_total,
+        "Balances should remain unchanged after underflow attempt"
+    );
 }

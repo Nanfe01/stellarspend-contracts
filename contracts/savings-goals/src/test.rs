@@ -1311,7 +1311,12 @@ fn test_reverse_contribution_within_window() {
 
     // Create a goal
     let mut goal_requests: Vec<SavingsGoalRequest> = Vec::new(&env);
-    goal_requests.push_back(create_valid_request(&env, &user, "reverse_goal", 100_000_000));
+    goal_requests.push_back(create_valid_request(
+        &env,
+        &user,
+        "reverse_goal",
+        100_000_000,
+    ));
     client.batch_set_savings_goals(&admin, &goal_requests);
 
     let goal_id: u64 = 1;
@@ -1337,16 +1342,21 @@ fn test_reverse_contribution_after_window_rejected() {
 
     // Create a goal
     let mut goal_requests: Vec<SavingsGoalRequest> = Vec::new(&env);
-    goal_requests.push_back(create_valid_request(&env, &user, "expired_rev", 100_000_000));
+    goal_requests.push_back(create_valid_request(
+        &env,
+        &user,
+        "expired_rev",
+        100_000_000,
+    ));
     client.batch_set_savings_goals(&admin, &goal_requests);
 
     let goal_id: u64 = 1;
     let contrib_id = client.contribute_to_goal(&user, &goal_id, &5_000_000i128);
 
     // Advance time past the 24-hour reversal window
-    env.ledger().set_timestamp(env.ledger().timestamp() + 86_401);
+    env.ledger()
+        .set_timestamp(env.ledger().timestamp() + 86_401);
 
     // Should panic with ReversalExpired
     client.reverse_contribution(&user, &goal_id, &contrib_id);
 }
-

@@ -1,8 +1,6 @@
 #![cfg(test)]
 
-use soroban_sdk::{
-    symbol_short, testutils::Address as _, Address, Env, String, Vec,
-};
+use soroban_sdk::{symbol_short, testutils::Address as _, Address, Env, String, Vec};
 
 use merchant_tagging::MerchantTaggingContractClient;
 
@@ -236,7 +234,14 @@ fn test_duplicate_tag_panics() {
     let tagger = Address::generate(&env);
     let asset = symbol_short!("XLM");
     let note = String::from_str(&env, "");
-    client.tag_transaction(&tagger, &1u64, &merchant_id, &500_000i128, &asset, &note.clone());
+    client.tag_transaction(
+        &tagger,
+        &1u64,
+        &merchant_id,
+        &500_000i128,
+        &asset,
+        &note.clone(),
+    );
     client.tag_transaction(&tagger, &1u64, &merchant_id, &500_000i128, &asset, &note);
 }
 
@@ -258,8 +263,22 @@ fn test_get_merchant_transactions() {
     let asset = symbol_short!("USDC");
     let note = String::from_str(&env, "");
 
-    client.tag_transaction(&tagger, &10u64, &merchant_id, &1_000_000i128, &asset, &note.clone());
-    client.tag_transaction(&tagger, &11u64, &merchant_id, &2_000_000i128, &asset, &note.clone());
+    client.tag_transaction(
+        &tagger,
+        &10u64,
+        &merchant_id,
+        &1_000_000i128,
+        &asset,
+        &note.clone(),
+    );
+    client.tag_transaction(
+        &tagger,
+        &11u64,
+        &merchant_id,
+        &2_000_000i128,
+        &asset,
+        &note.clone(),
+    );
     client.tag_transaction(&tagger, &12u64, &merchant_id, &3_000_000i128, &asset, &note);
 
     let txs = client.get_merchant_transactions(&merchant_id);
@@ -282,7 +301,14 @@ fn test_merchant_analytics_accumulate() {
     let asset = symbol_short!("XLM");
     let note = String::from_str(&env, "");
 
-    client.tag_transaction(&tagger, &1u64, &merchant_id, &1_000i128, &asset, &note.clone());
+    client.tag_transaction(
+        &tagger,
+        &1u64,
+        &merchant_id,
+        &1_000i128,
+        &asset,
+        &note.clone(),
+    );
     client.tag_transaction(&tagger, &2u64, &merchant_id, &2_000i128, &asset, &note);
 
     let analytics = client
@@ -344,7 +370,14 @@ fn test_total_tagged_counter() {
     let tagger = Address::generate(&env);
     let asset = symbol_short!("XLM");
     let note = String::from_str(&env, "");
-    client.tag_transaction(&tagger, &1u64, &merchant_id, &1_000i128, &asset, &note.clone());
+    client.tag_transaction(
+        &tagger,
+        &1u64,
+        &merchant_id,
+        &1_000i128,
+        &asset,
+        &note.clone(),
+    );
     client.tag_transaction(&tagger, &2u64, &merchant_id, &2_000i128, &asset, &note);
 
     assert_eq!(client.get_total_tagged(), 2);

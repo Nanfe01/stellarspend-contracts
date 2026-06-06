@@ -131,13 +131,8 @@ impl CategoryAnalytics {
         month: u32,
         time_filter: TimeFilter,
     ) -> MonthlyAnalytics {
-        let analytics = Self::get_category_metrics(
-            env.clone(),
-            user.clone(),
-            category.clone(),
-            year,
-            month,
-        );
+        let analytics =
+            Self::get_category_metrics(env.clone(), user.clone(), category.clone(), year, month);
 
         // Check if the analytics entry is within the time range
         if analytics.last_updated >= time_filter.start_timestamp

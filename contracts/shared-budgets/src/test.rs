@@ -469,7 +469,10 @@ fn test_get_contributions_multiple() {
     assert_eq!(contribs.get(0).unwrap().amount, 100_000_000);
     assert_eq!(contribs.get(0).unwrap().contributor, member);
     assert_eq!(contribs.get(1).unwrap().amount, 200_000_000);
-    assert_eq!(contribs.get(1).unwrap().memo, Some(Symbol::new(&env, "second")));
+    assert_eq!(
+        contribs.get(1).unwrap().memo,
+        Some(Symbol::new(&env, "second"))
+    );
 }
 
 #[test]
@@ -534,8 +537,18 @@ fn test_get_contributions_paginated_multiple_pages() {
     );
 
     client.contribute_to_budget(&member, &budget_id, &100_000_000_i128, &None);
-    client.contribute_to_budget(&member, &budget_id, &200_000_000_i128, &Some(Symbol::new(&env, "second")));
-    client.contribute_to_budget(&member, &budget_id, &300_000_000_i128, &Some(Symbol::new(&env, "third")));
+    client.contribute_to_budget(
+        &member,
+        &budget_id,
+        &200_000_000_i128,
+        &Some(Symbol::new(&env, "second")),
+    );
+    client.contribute_to_budget(
+        &member,
+        &budget_id,
+        &300_000_000_i128,
+        &Some(Symbol::new(&env, "third")),
+    );
 
     let page1 = client.get_contributions_paginated(&budget_id, &0, &2);
     assert_eq!(page1.len(), 2);

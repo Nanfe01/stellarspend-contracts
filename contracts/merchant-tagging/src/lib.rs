@@ -24,12 +24,12 @@ pub mod types;
 use soroban_sdk::{contract, contractimpl, Address, Env, String, Symbol, Vec};
 
 use crate::events::{
-    emit_merchant_deactivated, emit_merchant_registered, emit_merchant_updated,
-    emit_tag_removed, emit_transaction_tagged,
+    emit_merchant_deactivated, emit_merchant_registered, emit_merchant_updated, emit_tag_removed,
+    emit_transaction_tagged,
 };
 use crate::types::{
-    DataKey, Merchant, MerchantAnalytics, TransactionMerchantTag,
-    MAX_MERCHANT_NAME_LEN, MAX_QUERY_RESULTS, MAX_TAG_LEN, MAX_TAGS_PER_MERCHANT,
+    DataKey, Merchant, MerchantAnalytics, TransactionMerchantTag, MAX_MERCHANT_NAME_LEN,
+    MAX_QUERY_RESULTS, MAX_TAGS_PER_MERCHANT, MAX_TAG_LEN,
 };
 
 // ── Contract ──────────────────────────────────────────────────────────────────
@@ -50,9 +50,7 @@ impl MerchantTaggingContract {
         }
         admin.require_auth();
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage()
-            .instance()
-            .set(&DataKey::TotalTagged, &0u32);
+        env.storage().instance().set(&DataKey::TotalTagged, &0u32);
     }
 
     /// Return the admin address.
@@ -281,9 +279,7 @@ impl MerchantTaggingContract {
             .checked_add(amount)
             .expect("volume overflow");
         analytics.last_tx_at = env.ledger().timestamp();
-        env.storage()
-            .instance()
-            .set(&analytics_key, &analytics);
+        env.storage().instance().set(&analytics_key, &analytics);
 
         // Increment global counter
         let total: u32 = env

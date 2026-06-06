@@ -1,10 +1,5 @@
 use crate::{BatchHistoryContract, BatchHistoryContractClient};
-use soroban_sdk::{
-    testutils::Address as _,
-    vec,
-    Address,
-    Env,
-};
+use soroban_sdk::{testutils::Address as _, vec, Address, Env};
 
 fn setup() -> (Env, BatchHistoryContractClient<'static>) {
     let env = Env::default();
@@ -44,12 +39,7 @@ fn test_batch_retrieval_multiple_users() {
     let user_2 = Address::generate(&env);
     let user_3 = Address::generate(&env);
 
-    let users = vec![
-        &env,
-        user_1.clone(),
-        user_2.clone(),
-        user_3.clone(),
-    ];
+    let users = vec![&env, user_1.clone(), user_2.clone(), user_3.clone()];
 
     let results = client.retrieve_histories(&requester, &users);
 
@@ -83,12 +73,7 @@ fn test_batch_retrieval_preserves_order() {
     let user_2 = Address::generate(&env);
     let user_3 = Address::generate(&env);
 
-    let users = vec![
-        &env,
-        user_2.clone(),
-        user_1.clone(),
-        user_3.clone(),
-    ];
+    let users = vec![&env, user_2.clone(), user_1.clone(), user_3.clone()];
 
     let results = client.retrieve_histories(&requester, &users);
 
@@ -106,11 +91,7 @@ fn test_batch_retrieval_duplicate_users() {
     let requester = Address::generate(&env);
     let user = Address::generate(&env);
 
-    let users = vec![
-        &env,
-        user.clone(),
-        user.clone(),
-    ];
+    let users = vec![&env, user.clone(), user.clone()];
 
     let results = client.retrieve_histories(&requester, &users);
 

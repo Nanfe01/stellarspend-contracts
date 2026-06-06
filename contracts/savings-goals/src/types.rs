@@ -427,7 +427,13 @@ impl GoalEvents {
     }
 
     /// Event emitted when a goal is automatically closed because the target amount was reached.
-    pub fn goal_closed(env: &Env, goal_id: u64, user: &Address, final_amount: i128, closed_at: u64) {
+    pub fn goal_closed(
+        env: &Env,
+        goal_id: u64,
+        user: &Address,
+        final_amount: i128,
+        closed_at: u64,
+    ) {
         let topics = (symbol_short!("goal"), symbol_short!("closed"), goal_id);
         env.events()
             .publish(topics, (goal_id, user.clone(), final_amount, closed_at));
@@ -466,7 +472,6 @@ impl GoalEvents {
     /// Event emitted when a snapshot is successfully captured.
     pub fn goal_snapshot_recorded(env: &Env, goal_id: u64, amount: i128, timestamp: u64) {
         let topics = (symbol_short!("goal"), symbol_short!("snapshot"), goal_id);
-        env.events()
-            .publish(topics, (goal_id, amount, timestamp));
+        env.events().publish(topics, (goal_id, amount, timestamp));
     }
 }

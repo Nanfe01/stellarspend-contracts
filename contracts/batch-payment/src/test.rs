@@ -46,11 +46,16 @@ fn test_batch_transfer() {
 
     // Verify reference ID is returned
     assert!(batch_ref_id.len() > 0);
-    
+
     // Reference IDs should start with "TXN-"
     let ref_id_str = std::string::String::from_utf8(
-        batch_ref_id.as_ref().iter().map(|b| *b as u8).collect::<Vec<_>>()
-    ).unwrap_or_default();
+        batch_ref_id
+            .as_ref()
+            .iter()
+            .map(|b| *b as u8)
+            .collect::<Vec<_>>(),
+    )
+    .unwrap_or_default();
     assert!(ref_id_str.starts_with("TXN-"));
 
     // Verify balances

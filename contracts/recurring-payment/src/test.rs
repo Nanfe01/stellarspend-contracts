@@ -1,4 +1,4 @@
-﻿#![cfg(test)]
+#![cfg(test)]
 
 use super::*;
 use soroban_sdk::testutils::{Address as _, Ledger};
@@ -141,14 +141,8 @@ fn test_execute_with_delay() {
         let contract_id = env.register(RecurringPaymentContract, ());
         let client = RecurringPaymentContractClient::new(&env, &contract_id);
 
-        let payment_id = client.create_payment(
-            &sender,
-            &recipient,
-            &token_address,
-            &100,
-            &3600,
-            &0,
-        );
+        let payment_id =
+            client.create_payment(&sender, &recipient, &token_address, &100, &3600, &0);
 
         // Try to execute with insufficient funds — should panic
         let result = std::panic::catch_unwind(|| {
@@ -178,14 +172,8 @@ fn test_execute_with_delay() {
         let contract_id = env.register(RecurringPaymentContract, ());
         let client = RecurringPaymentContractClient::new(&env, &contract_id);
 
-        let payment_id = client.create_payment(
-            &sender,
-            &recipient,
-            &token_address,
-            &100,
-            &3600,
-            &0,
-        );
+        let payment_id =
+            client.create_payment(&sender, &recipient, &token_address, &100, &3600, &0);
 
         // First cause a miss with insufficient funds
         token_client.mint(&sender, &50);
@@ -220,18 +208,15 @@ fn test_execute_with_delay() {
         let contract_id = env.register(RecurringPaymentContract, ());
         let client = RecurringPaymentContractClient::new(&env, &contract_id);
 
-        let payment_id = client.create_payment(
-            &sender,
-            &recipient,
-            &token_address,
-            &100,
-            &1,
-            &0,
-        );
+        let payment_id = client.create_payment(&sender, &recipient, &token_address, &100, &1, &0);
 
         // Miss twice
-        let _ = std::panic::catch_unwind(|| { client.execute_payment(&payment_id); });
-        let _ = std::panic::catch_unwind(|| { client.execute_payment(&payment_id); });
+        let _ = std::panic::catch_unwind(|| {
+            client.execute_payment(&payment_id);
+        });
+        let _ = std::panic::catch_unwind(|| {
+            client.execute_payment(&payment_id);
+        });
 
         let payment = client.get_payment(&payment_id);
         assert_eq!(payment.missed_count, 2);

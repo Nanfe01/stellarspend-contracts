@@ -29,7 +29,10 @@ mod tests {
 
     #[test]
     fn test_validate_batch_size_exceeds_max() {
-        assert_eq!(validate_batch_size(101, 100), Err(SharedError::InvalidLength));
+        assert_eq!(
+            validate_batch_size(101, 100),
+            Err(SharedError::InvalidLength)
+        );
     }
 
     #[test]

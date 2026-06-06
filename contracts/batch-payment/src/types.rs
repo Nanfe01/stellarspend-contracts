@@ -7,11 +7,9 @@ pub struct Payment {
     pub amount: i128,
 }
 
-
-
-use soroban_sdk::{panic_with_error, Address, Env};
 use crate::storage::{bump_instance, DataKey};
 use crate::types::Error;
+use soroban_sdk::{panic_with_error, Address, Env};
 
 /// Persist the admin address.
 ///

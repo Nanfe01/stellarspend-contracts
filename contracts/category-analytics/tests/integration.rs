@@ -125,7 +125,8 @@ fn test_time_based_filtering() {
         start_timestamp: t1,
         end_timestamp: t2,
     };
-    let metrics_all = client.get_category_metrics_filtered(&user, &category, &2026, &2, &filter_all);
+    let metrics_all =
+        client.get_category_metrics_filtered(&user, &category, &2026, &2, &filter_all);
     assert_eq!(metrics_all.volume, 8000);
     assert_eq!(metrics_all.count, 2);
 
@@ -134,7 +135,8 @@ fn test_time_based_filtering() {
         start_timestamp: 0,
         end_timestamp: t1 - 1,
     };
-    let metrics_before = client.get_category_metrics_filtered(&user, &category, &2026, &2, &filter_before);
+    let metrics_before =
+        client.get_category_metrics_filtered(&user, &category, &2026, &2, &filter_before);
     assert_eq!(metrics_before.volume, 0);
     assert_eq!(metrics_before.count, 0);
 
@@ -143,7 +145,8 @@ fn test_time_based_filtering() {
         start_timestamp: t2,
         end_timestamp: t1,
     };
-    let metrics_invalid = client.get_category_metrics_filtered(&user, &category, &2026, &2, &filter_invalid);
+    let metrics_invalid =
+        client.get_category_metrics_filtered(&user, &category, &2026, &2, &filter_invalid);
     assert_eq!(metrics_invalid.volume, 0);
     assert_eq!(metrics_invalid.count, 0);
 

@@ -12,10 +12,7 @@ pub use crate::types::{
 };
 //bbbb
 use crate::validation::{
-    validate_address,
-    validate_amount,
-    validate_batch_not_empty,
-    validate_unique_recipient,
+    validate_address, validate_amount, validate_batch_not_empty, validate_unique_recipient,
 };
 use shared::validation::validate_batch_size;
 

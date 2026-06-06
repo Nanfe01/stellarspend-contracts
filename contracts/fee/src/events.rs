@@ -1,6 +1,4 @@
-use soroban_sdk::{
-    contracttype, symbol_short, Address, Env, String, Symbol,
-};
+use soroban_sdk::{contracttype, symbol_short, Address, Env, String, Symbol};
 
 use crate::storage::{DEFAULT_FEE_BPS, DEFAULT_MIN_FEE};
 use crate::utils::format_amount;
@@ -18,14 +16,8 @@ fn publish<T>(env: &Env, category: Symbol, action: Symbol, data: T)
 where
     T: IntoVal<Env, soroban_sdk::Val>,
 {
-    env.events().publish(
-        (
-            category,
-            action,
-            EVENT_VERSION,
-        ),
-        data,
-    );
+    env.events()
+        .publish((category, action, EVENT_VERSION), data);
 }
 
 //
@@ -92,12 +84,7 @@ impl FeeEvents {
         );
     }
 
-    pub fn fee_escrowed(
-        env: &Env,
-        payer: &Address,
-        amount: i128,
-        cycle: u64,
-    ) {
+    pub fn fee_escrowed(env: &Env, payer: &Address, amount: i128, cycle: u64) {
         publish(
             env,
             symbol_short!("fee"),
@@ -121,21 +108,11 @@ impl FeeEvents {
             env,
             symbol_short!("fee"),
             symbol_short!("batch"),
-            (
-                payer.clone(),
-                total_amount,
-                batch_size,
-                cycle,
-            ),
+            (payer.clone(), total_amount, batch_size, cycle),
         );
     }
 
-    pub fn fee_released(
-        env: &Env,
-        cycle: u64,
-        amount: i128,
-        treasury: &Address,
-    ) {
+    pub fn fee_released(env: &Env, cycle: u64, amount: i128, treasury: &Address) {
         publish(
             env,
             symbol_short!("fee"),
@@ -148,12 +125,7 @@ impl FeeEvents {
         );
     }
 
-    pub fn fee_rolled(
-        env: &Env,
-        from_cycle: u64,
-        to_cycle: u64,
-        amount: i128,
-    ) {
+    pub fn fee_rolled(env: &Env, from_cycle: u64, to_cycle: u64, amount: i128) {
         publish(
             env,
             symbol_short!("fee"),
@@ -167,28 +139,14 @@ impl FeeEvents {
     }
 
     pub fn locked(env: &Env) {
-        publish(
-            env,
-            symbol_short!("fee"),
-            symbol_short!("locked"),
-            (),
-        );
+        publish(env, symbol_short!("fee"), symbol_short!("locked"), ());
     }
 
     pub fn unlocked(env: &Env) {
-        publish(
-            env,
-            symbol_short!("fee"),
-            symbol_short!("unlock"),
-            (),
-        );
+        publish(env, symbol_short!("fee"), symbol_short!("unlock"), ());
     }
 
-    pub fn fee_reconciled(
-        env: &Env,
-        stored: i128,
-        calculated: i128,
-    ) {
+    pub fn fee_reconciled(env: &Env, stored: i128, calculated: i128) {
         publish(
             env,
             symbol_short!("fee"),
@@ -201,12 +159,7 @@ impl FeeEvents {
         );
     }
 
-    pub fn fee_discrepancy(
-        env: &Env,
-        stored: i128,
-        calculated: i128,
-        discrepancy: i128,
-    ) {
+    pub fn fee_discrepancy(env: &Env, stored: i128, calculated: i128, discrepancy: i128) {
         publish(
             env,
             symbol_short!("fee"),
@@ -235,12 +188,7 @@ pub struct TierAssignmentEvent {
 }
 
 impl TierEvents {
-    pub fn tier_set(
-        env: &Env,
-        admin: &Address,
-        user: &Address,
-        tier: &Symbol,
-    ) {
+    pub fn tier_set(env: &Env, admin: &Address, user: &Address, tier: &Symbol) {
         publish(
             env,
             symbol_short!("tier"),
@@ -253,19 +201,12 @@ impl TierEvents {
         );
     }
 
-    pub fn tier_removed(
-        env: &Env,
-        admin: &Address,
-        user: &Address,
-    ) {
+    pub fn tier_removed(env: &Env, admin: &Address, user: &Address) {
         publish(
             env,
             symbol_short!("tier"),
             symbol_short!("remove"),
-            (
-                admin.clone(),
-                user.clone(),
-            ),
+            (admin.clone(), user.clone()),
         );
     }
 }
@@ -286,10 +227,7 @@ pub struct FeeResetEventData {
 }
 
 impl ConfigEvents {
-    pub fn fee_reset(
-        env: &Env,
-        admin: &Address,
-    ) {
+    pub fn fee_reset(env: &Env, admin: &Address) {
         publish(
             env,
             symbol_short!("fee"),
@@ -298,10 +236,7 @@ impl ConfigEvents {
                 admin: admin.clone(),
                 fee_bps: DEFAULT_FEE_BPS,
                 min_fee: DEFAULT_MIN_FEE,
-                formatted_min_fee: format_amount(
-                    env,
-                    DEFAULT_MIN_FEE,
-                ),
+                formatted_min_fee: format_amount(env, DEFAULT_MIN_FEE),
             },
         );
     }

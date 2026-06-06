@@ -11,7 +11,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Authorization & Access Control
     // ---------------------------------------------------------------------
-
     /// Caller lacks permission to perform the requested action.
     Unauthorized = 1,
 
@@ -24,7 +23,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Validation Errors
     // ---------------------------------------------------------------------
-
     /// Input validation failed.
     InvalidInput = 10,
 
@@ -43,7 +41,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Resource Errors
     // ---------------------------------------------------------------------
-
     /// Requested resource could not be found.
     ResourceNotFound = 20,
 
@@ -56,7 +53,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Financial & Balance Errors
     // ---------------------------------------------------------------------
-
     /// Insufficient balance for operation.
     InsufficientBalance = 30,
 
@@ -72,7 +68,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Time & Expiration Errors
     // ---------------------------------------------------------------------
-
     /// Operation attempted before allowed time.
     TooEarly = 40,
 
@@ -85,7 +80,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Contract State Errors
     // ---------------------------------------------------------------------
-
     /// Operation is not allowed in current contract state.
     InvalidState = 50,
 
@@ -98,7 +92,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Upgrade & Migration Errors
     // ---------------------------------------------------------------------
-
     /// Contract version mismatch detected.
     VersionMismatch = 60,
 
@@ -108,7 +101,6 @@ pub enum SharedError {
     // ---------------------------------------------------------------------
     // Generic Fallback
     // ---------------------------------------------------------------------
-
     /// Unexpected internal contract error.
     InternalError = 99,
 }

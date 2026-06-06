@@ -25,14 +25,15 @@ fn test_clean_description_passes() {
     // Result should be Ok with a reference ID
     let result = client.execute_transfer(&from, &to, &amount, &clean_desc);
     assert!(result.is_ok());
-    
+
     // Verify reference ID format
     let ref_id = result.unwrap();
     assert!(ref_id.len() > 0);
     // Reference IDs should start with "TXN-"
     let ref_id_str = std::string::String::from_utf8(
-        ref_id.as_ref().iter().map(|b| *b as u8).collect::<Vec<_>>()
-    ).unwrap_or_default();
+        ref_id.as_ref().iter().map(|b| *b as u8).collect::<Vec<_>>(),
+    )
+    .unwrap_or_default();
     assert!(ref_id_str.starts_with("TXN-"));
 }
 
@@ -88,8 +89,12 @@ fn test_transfer_generates_unique_reference_ids() {
     let desc = String::from_str(&env, "Payment");
 
     // Execute two transfers from the same sender
-    let ref_id_1 = client.execute_transfer(&from, &to1, &amount, &desc).unwrap();
-    let ref_id_2 = client.execute_transfer(&from, &to2, &amount, &desc).unwrap();
+    let ref_id_1 = client
+        .execute_transfer(&from, &to1, &amount, &desc)
+        .unwrap();
+    let ref_id_2 = client
+        .execute_transfer(&from, &to2, &amount, &desc)
+        .unwrap();
 
     // Reference IDs should be different for different transactions
     assert_ne!(ref_id_1, ref_id_2);
