@@ -1,7 +1,2 @@
-[payment_amount]
-type = "u64"
-value = "500"
-
-[spending_limit]
-type = "u64"
-value = "1000"
+payment_amount = "500"
+spending_limit = "1000"
