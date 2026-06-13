@@ -6,11 +6,7 @@ pub struct ZkVerifierContract;
 
 #[contractimpl]
 impl ZkVerifierContract {
-    pub fn verify_spending_proof(
-        _env: Env,
-        _user: soroban_sdk::Address,
-        proof: Bytes,
-    ) -> bool {
+    pub fn verify_spending_proof(_env: Env, _user: soroban_sdk::Address, proof: Bytes) -> bool {
         // Verify the ZK proof
         // If valid, spending is within limit without revealing amount
         let proof_len = proof.len();
