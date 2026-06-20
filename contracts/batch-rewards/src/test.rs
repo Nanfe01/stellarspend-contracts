@@ -301,7 +301,12 @@ fn test_distribute_rewards_unauthorized() {
     let mut rewards: Vec<RewardRequest> = Vec::new(&env);
     rewards.push_back(create_reward_request(&env, recipient, amount));
 
-    client.distribute_rewards(&unauthorized_caller, &token, &idempotency_token(&env, 10), &rewards);
+    client.distribute_rewards(
+        &unauthorized_caller,
+        &token,
+        &idempotency_token(&env, 10),
+        &rewards,
+    );
 }
 
 #[test]

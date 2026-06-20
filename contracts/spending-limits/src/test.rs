@@ -465,7 +465,10 @@ fn test_enforce_spending_limit_resets_after_window() {
     let result = catch_unwind(AssertUnwindSafe(|| {
         client.enforce_spending_limit(&user, &1, &None::<Symbol>);
     }));
-    assert!(result.is_err(), "Same-day spend above the daily limit should fail");
+    assert!(
+        result.is_err(),
+        "Same-day spend above the daily limit should fail"
+    );
 
     // Advance past the 24-hour window and verify the count resets.
     env.ledger().set_timestamp(86_401);
