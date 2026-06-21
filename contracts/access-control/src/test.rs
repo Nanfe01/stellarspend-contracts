@@ -234,10 +234,10 @@ fn test_get_user_roles_returns_empty_for_user_with_no_roles() {
 
     let roles = client.get_user_roles(&user);
 
-    assert_eq!(roles.get(Role::Admin), None);
-    assert_eq!(roles.get(Role::User), None);
-    assert_eq!(roles.get(Role::Operator), None);
-    assert_eq!(roles.get(Role::Auditor), None);
+    assert!(!roles.contains(&Role::Admin));
+    assert!(!roles.contains(&Role::User));
+    assert!(!roles.contains(&Role::Operator));
+    assert!(!roles.contains(&Role::Auditor));
     assert!(!client.has_any_role(&user));
 }
 
@@ -253,7 +253,7 @@ fn test_has_any_role_returns_true_for_assigned_roles() {
     client.grant_role(&admin, &user, &Role::Auditor);
 
     assert!(client.has_any_role(&user));
-    assert_eq!(client.get_user_roles(&user).get(Role::Auditor), Some(true));
+    assert!(client.get_user_roles(&user).contains(&Role::Auditor));
 }
 
 #[test]
