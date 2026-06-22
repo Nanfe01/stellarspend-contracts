@@ -131,6 +131,19 @@ impl CategoryAnalytics {
         month: u32,
         time_filter: TimeFilter,
     ) -> MonthlyAnalytics {
+        // Check for empty/invalid time range (start > end)
+        if time_filter.start_timestamp > time_filter.end_timestamp {
+            return MonthlyAnalytics {
+                user,
+                category,
+                year,
+                month,
+                volume: 0,
+                count: 0,
+                last_updated: 0,
+            };
+        }
+
         let analytics =
             Self::get_category_metrics(env.clone(), user.clone(), category.clone(), year, month);
 
@@ -155,7 +168,7 @@ impl CategoryAnalytics {
     /// Aggregates yearly trend for a user and category with time filtering.
     ///
     /// Excludes month metrics that do not fall within the `time_filter` range.
-    /// Empty ranges return zero totals without panicking.
+    /// Empty ranges (start > end) return zero totals without panicking.
     pub fn get_yearly_trend_filtered(
         env: Env,
         user: Address,
@@ -163,6 +176,14 @@ impl CategoryAnalytics {
         year: u32,
         time_filter: TimeFilter,
     ) -> CategorySpending {
+        // Check for empty/invalid time range (start > end)
+        if time_filter.start_timestamp > time_filter.end_timestamp {
+            return CategorySpending {
+                count: 0,
+                volume: 0,
+            };
+        }
+
         let mut total_volume: i128 = 0;
         let mut total_count: u32 = 0;
 
