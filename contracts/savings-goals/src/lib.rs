@@ -27,6 +27,7 @@ mod validation;
 
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Symbol, Vec};
 
+use crate::types::SavingsGoal;
 pub use crate::types::{
     BatchGoalMetrics, BatchGoalResult, BatchMilestoneMetrics, BatchMilestoneResult,
     ContributionRecord, DataKey, ErrorCode, GoalEvents, GoalResult, GoalSnapshot,
@@ -36,7 +37,6 @@ pub use crate::types::{
 use crate::validation::{
     validate_goal_name_unique, validate_goal_request, validate_milestone_request,
 };
-use crate::types::SavingsGoal;
 
 const PERSISTENT_TTL_BUMP: u32 = 12_614_400;
 
