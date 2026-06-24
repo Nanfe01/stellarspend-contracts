@@ -454,69 +454,62 @@ impl AuditContract {
             false
         }
     }
-/// Return all audit logs recorded for a specific actor address.
-///
-/// Returns an empty Vec when the actor has no logs — does not panic.
-pub fn get_logs_by_user(env: Env, user: Address) -> Vec<AuditLog> {
-    let user_seq: u64 = env
-        .storage()
-        .persistent()
-        .get(&DataKey::UserLogCount(user.clone()))
-        .unwrap_or(0);
 
-    let mut logs: Vec<AuditLog> = Vec::new(&env);
-    for i in 1..=user_seq {
-        if let Some(global_idx) = env
+    /// Return all audit logs recorded for a specific actor address.
+    ///
+    /// Performs a linear scan of all stored logs. Returns an empty Vec when the
+    /// actor has no logs — does not panic.
+    pub fn get_logs_by_user(env: Env, user: Address) -> Vec<AuditLog> {
+        let total: u64 = env
             .storage()
-            .persistent()
-            .get::<_, u64>(&DataKey::UserLogIndex(user.clone(), i))
-        {
+            .instance()
+            .get(&DataKey::TotalAuditLogs)
+            .unwrap_or(0);
+
+        let mut logs: Vec<AuditLog> = Vec::new(&env);
+        for i in 1..=total {
             if let Some(log) = env
                 .storage()
                 .persistent()
-                .get::<_, AuditLog>(&DataKey::AuditLog(global_idx))
+                .get::<_, AuditLog>(&DataKey::AuditLog(i))
             {
-                logs.push_back(log);
+                if log.actor == user {
+                    logs.push_back(log);
+                }
             }
         }
-    }
-    logs
-}
-
-/// Return all audit logs whose `timestamp` falls within [start_ts, end_ts].
-///
-/// Performs a sequential scan of all stored logs. Returns an empty Vec when
-/// no logs fall in the range — does not panic.
-///
-/// # Arguments
-/// * `start_ts` - Inclusive lower bound (ledger timestamp)
-/// * `end_ts`   - Inclusive upper bound (ledger timestamp)
-pub fn get_logs_by_range(env: Env, start_ts: u64, end_ts: u64) -> Vec<AuditLog> {
-    if start_ts > end_ts {
-        panic!("start timestamp cannot be greater than end timestamp");
+        logs
     }
 
-    let total: u64 = env
-        .storage()
-        .instance()
-        .get(&DataKey::TotalAuditLogs)
-        .unwrap_or(0);
+    /// Return all audit logs whose `timestamp` falls within [start_ts, end_ts].
+    ///
+    /// Performs a sequential scan of all stored logs. Returns an empty Vec when
+    /// no logs fall in the range — does not panic.
+    pub fn get_logs_by_range(env: Env, start_ts: u64, end_ts: u64) -> Vec<AuditLog> {
+        if start_ts > end_ts {
+            panic!("start timestamp cannot be greater than end timestamp");
+        }
 
-    let mut logs: Vec<AuditLog> = Vec::new(&env);
-    for i in 1..=total {
-        if let Some(log) = env
+        let total: u64 = env
             .storage()
-            .persistent()
-            .get::<_, AuditLog>(&DataKey::AuditLog(i))
-        {
-            if log.timestamp >= start_ts && log.timestamp <= end_ts {
-                logs.push_back(log);
+            .instance()
+            .get(&DataKey::TotalAuditLogs)
+            .unwrap_or(0);
+
+        let mut logs: Vec<AuditLog> = Vec::new(&env);
+        for i in 1..=total {
+            if let Some(log) = env
+                .storage()
+                .persistent()
+                .get::<_, AuditLog>(&DataKey::AuditLog(i))
+            {
+                if log.timestamp >= start_ts && log.timestamp <= end_ts {
+                    logs.push_back(log);
+                }
             }
         }
+        logs
     }
-    logs
-}
-    
 }
 
 #[cfg(test)]
