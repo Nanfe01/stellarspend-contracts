@@ -29,7 +29,6 @@ members = [
     "contracts/batch-token-mint",
     "contracts/asset_control",
     "contracts/access-control",
-    "contracts/budget",
     "contracts/category-analytics",
     "contracts/spending-categories",
     "contracts/users",
