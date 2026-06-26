@@ -256,6 +256,7 @@ Look for issues tagged `good first issue` on the Issues page.
 * Additional ZK circuits for privacy use cases
 * Soroban contract testing
 * Documentation improvements
+* Benchmarks – [Benchmarks README](contracts/benchmarks/README.md)
 * Frontend integration examples
 * Testnet deployment guides
 
