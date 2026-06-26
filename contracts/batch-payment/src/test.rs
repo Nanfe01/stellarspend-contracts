@@ -4,7 +4,7 @@ extern crate std;
 use super::*;
 use soroban_sdk::{
     testutils::{Address as _, Events},
-    Address, Env, Vec,
+    Address, Env, Symbol, Vec,
 };
 
 #[test]
@@ -64,17 +64,13 @@ fn test_batch_transfer() {
     assert_eq!(token_client.balance(&user2), 200);
     std::println!("Balances OK");
 
-    // Test direct event emission
-    env.events().publish((1,), 2);
-    std::println!("Direct event emitted");
-
-    // Verify events
+    // Verify receipt event was emitted
     let events = env.events().all();
-    std::println!("EVENTS: {:?}", events);
-
-    // We expect at least the direct event + contract events + token events
-    // assert!(events.len() > 0);
-    std::println!("Balances verified. Skipping event assertion due to SDK behavior.");
+    let receipt_topic = Symbol::new(&env, "receipt");
+    let receipt_found = events.iter().any(|event| {
+        event.topics.get(0).map_or(false, |topic| topic == receipt_topic.clone().into())
+    });
+    assert!(receipt_found, "Receipt event should be emitted after successful batch payment");
 }
 
 #[test]

@@ -3,7 +3,7 @@
 mod test;
 mod types;
 
-use crate::types::Payment;
+use crate::types::{Payment, ReceiptEvent};
 use shared::utils::generate_transaction_reference_id;
 use soroban_sdk::{contract, contractimpl, symbol_short, token, Address, Env, String, Symbol, Vec};
 
@@ -77,6 +77,18 @@ impl BatchPaymentContract {
             batch_reference_id.clone(),
         );
         env.events().publish(topics, (count, total_amount));
+
+        // Emit receipt event for off-chain reconciliation
+        env.events().publish(
+            (symbol_short!("receipt"),),
+            ReceiptEvent {
+                batch_reference_id: batch_reference_id.clone(),
+                token: token.clone(),
+                from: from.clone(),
+                total_payments: count,
+                total_amount,
+            },
+        );
 
         batch_reference_id
     }

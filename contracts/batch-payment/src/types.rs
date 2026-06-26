@@ -1,10 +1,20 @@
-use soroban_sdk::{contracttype, Address};
+use soroban_sdk::{contracttype, Address, String};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Payment {
     pub recipient: Address,
     pub amount: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReceiptEvent {
+    pub batch_reference_id: String,
+    pub token: Address,
+    pub from: Address,
+    pub total_payments: u32,
+    pub total_amount: i128,
 }
 
 use crate::storage::{bump_instance, DataKey};
