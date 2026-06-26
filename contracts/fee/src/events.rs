@@ -49,6 +49,15 @@ pub struct FeeReleasedEvent {
     pub treasury: Address,
 }
 
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FeeDistributedEvent {
+    pub total_amount: i128,
+    pub treasury_amount: i128,
+    pub stakeholder_amount: i128,
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FeeRolloverEvent {
