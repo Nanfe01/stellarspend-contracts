@@ -11,6 +11,7 @@
 //! - #833 Add Allowance Pause/Resume   — `pause_allowance` / `resume_allowance`
 //! - #834 Add Allowance Cancellation   — `cancel_allowance` (already present, confirmed)
 //! - #835 Add Allowance Beneficiary Update — `update_beneficiary`
+//! - #845 Allowance Approval Workflow   — `set_approval_config` / `approve_allowance` (large allowances stay inactive until approved) + `transfer_ownership`
 
 #![no_std]
 
@@ -54,6 +55,18 @@ impl AllowancesContract {
             .unwrap_or(0);
         count += 1;
 
+        // Large allowances require approval before they become active (#845).
+        // When no threshold is configured, every allowance is active on
+        // creation (unchanged behaviour).
+        let requires_approval = match env
+            .storage()
+            .instance()
+            .get::<DataKey, i128>(&DataKey::ApprovalThreshold)
+        {
+            Some(threshold) => amount > threshold,
+            None => false,
+        };
+
         let allowance = Allowance {
             owner: owner.clone(),
             recipient: recipient.clone(),
@@ -62,8 +75,9 @@ impl AllowancesContract {
             frequency: frequency.clone(),
             next_distribution: start_time,
             distribution_count: 0,
-            active: true,
+            active: !requires_approval,
             paused: false,
+            pending_approval: requires_approval,
         };
 
         env.storage().persistent().set(&DataKey::Allowance(count), &allowance);
@@ -105,6 +119,9 @@ impl AllowancesContract {
             .get(&DataKey::Allowance(allowance_id))
             .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::NotFound));
 
+        if allowance.pending_approval {
+            panic_with_error!(&env, AllowanceError::ApprovalRequired);
+        }
         if !allowance.active {
             panic_with_error!(&env, AllowanceError::AlreadyInactive);
         }
@@ -240,6 +257,112 @@ impl AllowancesContract {
         env.events().publish(
             (symbol_short!("allow"), symbol_short!("ben_upd"), allowance_id),
             (old_recipient, new_recipient),
+        );
+    }
+
+    // ── Approval workflow (#845) ──────────────────────────────────────────
+
+    /// Configures the approval policy: the `approver` address and the `threshold`
+    /// above which new allowances require approval before becoming active.
+    ///
+    /// First call is authorized by the incoming `approver`; subsequent calls
+    /// (rotation / threshold changes) must be authorized by the current approver.
+    pub fn set_approval_config(env: Env, approver: Address, threshold: i128) {
+        if threshold <= 0 {
+            panic_with_error!(&env, AllowanceError::InvalidThreshold);
+        }
+
+        match env
+            .storage()
+            .instance()
+            .get::<DataKey, Address>(&DataKey::Approver)
+        {
+            Some(current) => current.require_auth(),
+            None => approver.require_auth(),
+        }
+
+        env.storage().instance().set(&DataKey::Approver, &approver);
+        env.storage().instance().set(&DataKey::ApprovalThreshold, &threshold);
+
+        env.events().publish(
+            (symbol_short!("allow"), symbol_short!("apprcfg")),
+            (approver, threshold),
+        );
+    }
+
+    /// Approves a pending (over-threshold) allowance, activating it.
+    /// Only the configured approver may call.
+    pub fn approve_allowance(env: Env, allowance_id: u64) {
+        let approver: Address = env
+            .storage().instance()
+            .get(&DataKey::Approver)
+            .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::ApproverNotConfigured));
+        approver.require_auth();
+
+        let mut allowance: Allowance = env
+            .storage().persistent()
+            .get(&DataKey::Allowance(allowance_id))
+            .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::NotFound));
+
+        if !allowance.pending_approval {
+            panic_with_error!(&env, AllowanceError::NotPendingApproval);
+        }
+
+        allowance.pending_approval = false;
+        allowance.active = true;
+        env.storage().persistent().set(&DataKey::Allowance(allowance_id), &allowance);
+
+        env.events().publish(
+            (symbol_short!("allow"), symbol_short!("approved"), allowance_id),
+            approver,
+        );
+    }
+
+    // ── Ownership transfer (#845) ─────────────────────────────────────────
+
+    /// Reassigns ownership of an allowance to `new_owner`. Only the current
+    /// owner may call. After transfer, only the new owner can manage the
+    /// allowance (pause, resume, cancel, update beneficiary, transfer again).
+    pub fn transfer_ownership(env: Env, allowance_id: u64, new_owner: Address) {
+        let mut allowance: Allowance = env
+            .storage().persistent()
+            .get(&DataKey::Allowance(allowance_id))
+            .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::NotFound));
+
+        allowance.owner.require_auth();
+        if !allowance.active {
+            panic_with_error!(&env, AllowanceError::AlreadyInactive);
+        }
+
+        let old_owner = allowance.owner.clone();
+
+        // Remove the id from the previous owner's index.
+        let prev_ids: Vec<u64> = env
+            .storage().persistent()
+            .get(&DataKey::OwnerAllowances(old_owner.clone()))
+            .unwrap_or(Vec::new(&env));
+        let mut remaining = Vec::new(&env);
+        for id in prev_ids.iter() {
+            if id != allowance_id {
+                remaining.push_back(id);
+            }
+        }
+        env.storage().persistent().set(&DataKey::OwnerAllowances(old_owner.clone()), &remaining);
+
+        // Add the id to the new owner's index.
+        let mut new_ids: Vec<u64> = env
+            .storage().persistent()
+            .get(&DataKey::OwnerAllowances(new_owner.clone()))
+            .unwrap_or(Vec::new(&env));
+        new_ids.push_back(allowance_id);
+        env.storage().persistent().set(&DataKey::OwnerAllowances(new_owner.clone()), &new_ids);
+
+        allowance.owner = new_owner.clone();
+        env.storage().persistent().set(&DataKey::Allowance(allowance_id), &allowance);
+
+        env.events().publish(
+            (symbol_short!("allow"), symbol_short!("own_xfer"), allowance_id),
+            (old_owner, new_owner),
         );
     }
 
