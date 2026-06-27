@@ -11,6 +11,7 @@
 //! - #833 Add Allowance Pause/Resume   — `pause_allowance` / `resume_allowance`
 //! - #834 Add Allowance Cancellation   — `cancel_allowance` (already present, confirmed)
 //! - #835 Add Allowance Beneficiary Update — `update_beneficiary`
+//! - #846 Add Allowance Analytics       — `get_allowance_analytics` (total distributed, average payment, remaining)
 
 #![no_std]
 
@@ -23,7 +24,7 @@ use soroban_sdk::{
     contract, contractimpl, panic_with_error, symbol_short, token, Address, Env, Vec,
 };
 
-use types::{AllowanceError, Allowance, DataKey, Frequency};
+use types::{AllowanceError, Allowance, AllowanceAnalytics, DataKey, Frequency};
 
 #[contract]
 pub struct AllowancesContract;
@@ -249,6 +250,32 @@ impl AllowancesContract {
         env.storage().persistent()
             .get(&DataKey::Allowance(allowance_id))
             .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::NotFound))
+    }
+
+    /// Returns usage analytics for an allowance (#846): total amount
+    /// distributed, the average payment, and the owner's remaining spendable
+    /// balance in the allowance token.
+    pub fn get_allowance_analytics(env: Env, allowance_id: u64) -> AllowanceAnalytics {
+        let allowance: Allowance = env
+            .storage().persistent()
+            .get(&DataKey::Allowance(allowance_id))
+            .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::NotFound));
+
+        let count = allowance.distribution_count as i128;
+        let total_distributed = allowance.amount.saturating_mul(count);
+        let average_payment = if count == 0 {
+            0
+        } else {
+            total_distributed / count
+        };
+        let remaining = token::Client::new(&env, &allowance.token).balance(&allowance.owner);
+
+        AllowanceAnalytics {
+            total_distributed,
+            distribution_count: allowance.distribution_count,
+            average_payment,
+            remaining,
+        }
     }
 
     pub fn get_owner_allowances(env: Env, owner: Address) -> Vec<u64> {
