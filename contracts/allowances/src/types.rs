@@ -55,6 +55,19 @@ pub struct Allowance {
     pub paused: bool,
 }
 
+/// A single recorded payment in an allowance's distribution history (#837).
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PaymentRecord {
+    /// Amount transferred in this distribution.
+    pub amount: i128,
+    /// Ledger timestamp at which the payment was made.
+    pub timestamp: u64,
+    /// Recipient who received this payment (captured at payment time, since the
+    /// beneficiary can change between distributions).
+    pub recipient: Address,
+}
+
 /// Persistent storage keys for the allowances contract.
 #[contracttype]
 pub enum DataKey {
@@ -66,6 +79,8 @@ pub enum DataKey {
     OwnerAllowances(Address),
     /// Index: list of allowance IDs a recipient is entitled to.
     RecipientAllowances(Address),
+    /// Ordered payment history for an allowance (#837).
+    AllowanceHistory(u64),
 }
 
 /// Error codes returned by the allowances contract.
