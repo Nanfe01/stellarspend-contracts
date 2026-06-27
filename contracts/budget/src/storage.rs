@@ -118,6 +118,8 @@ pub enum DataKey {
     BudgetVersionCounter(Address),
     Delegation(Address, Address),
     OwnerDelegates(Address),
+    GlobalRules,
+    UserRules(Address),
 }
 
 pub fn get_user_budget(env: &Env, user: &Address) -> Option<UserBudget> {

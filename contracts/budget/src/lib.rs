@@ -68,6 +68,8 @@ pub enum BudgetError {
     ExceedsPermission = 21,
     /// Delegation exists but has been revoked (inactive)
     DelegationNotActive = 22,
+    /// Budget violates a configured rule
+    RuleViolation = 23,
 }
 
 impl From<BudgetError> for soroban_sdk::Error {
@@ -269,6 +271,33 @@ impl BudgetContract {
             panic_with_error!(&env, BudgetError::InvalidAmount);
         }
 
+        let global_rules: Vec<crate::types::BudgetRule> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::GlobalRules)
+            .unwrap_or(Vec::new(&env));
+
+        let user_rules: Vec<crate::types::BudgetRule> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserRules(user.clone()))
+            .unwrap_or(Vec::new(&env));
+
+        for rule in global_rules.iter().chain(user_rules.iter()) {
+            match rule {
+                crate::types::BudgetRule::MaxAmount(max) => {
+                    if amount > max {
+                        panic_with_error!(&env, BudgetError::RuleViolation);
+                    }
+                }
+                crate::types::BudgetRule::MinAmount(min) => {
+                    if amount < min {
+                        panic_with_error!(&env, BudgetError::RuleViolation);
+                    }
+                }
+            }
+        }
+
         let current_time = env.ledger().timestamp();
 
         let mut total_allocated: i128 = env
@@ -358,6 +387,33 @@ impl BudgetContract {
 
         if limit < 0 {
             panic_with_error!(&env, BudgetError::InvalidAmount);
+        }
+
+        let global_rules: Vec<crate::types::BudgetRule> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::GlobalRules)
+            .unwrap_or(Vec::new(&env));
+
+        let user_rules: Vec<crate::types::BudgetRule> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserRules(user.clone()))
+            .unwrap_or(Vec::new(&env));
+
+        for rule in global_rules.iter().chain(user_rules.iter()) {
+            match rule {
+                crate::types::BudgetRule::MaxAmount(max) => {
+                    if limit > max {
+                        panic_with_error!(&env, BudgetError::RuleViolation);
+                    }
+                }
+                crate::types::BudgetRule::MinAmount(min) => {
+                    if limit < min {
+                        panic_with_error!(&env, BudgetError::RuleViolation);
+                    }
+                }
+            }
         }
 
         let now = env.ledger().timestamp();
@@ -794,6 +850,40 @@ impl BudgetContract {
         env.storage()
             .persistent()
             .get(&DataKey::PendingDeletion(user))
+    }
+
+    /// Adds a global budget rule.
+    pub fn add_global_rule(env: Env, admin: Address, rule: crate::types::BudgetRule) {
+        admin.require_auth();
+        Self::require_admin(&env, &admin);
+
+        let mut rules: Vec<crate::types::BudgetRule> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::GlobalRules)
+            .unwrap_or(Vec::new(&env));
+
+        if !rules.contains(&rule) {
+            rules.push_back(rule);
+            env.storage().persistent().set(&DataKey::GlobalRules, &rules);
+        }
+    }
+
+    /// Adds a user-specific budget rule.
+    pub fn add_user_rule(env: Env, admin: Address, user: Address, rule: crate::types::BudgetRule) {
+        admin.require_auth();
+        Self::require_admin(&env, &admin);
+
+        let mut rules: Vec<crate::types::BudgetRule> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserRules(user.clone()))
+            .unwrap_or(Vec::new(&env));
+
+        if !rules.contains(&rule) {
+            rules.push_back(rule);
+            env.storage().persistent().set(&DataKey::UserRules(user), &rules);
+        }
     }
 
     /// Retrieves the budget for a specific user (default/native asset).
