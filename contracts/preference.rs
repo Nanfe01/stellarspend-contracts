@@ -502,3 +502,39 @@ impl NotificationPreferencesContract {
         result
     }
 }
+#[cfg(test)]
+mod preference_tests {
+    use super::*;
+    use soroban_sdk::{Address, Env};
+
+    fn setup(env: &Env) -> (soroban_sdk::Address, soroban_sdk::Address) {
+        env.mock_all_auths();
+        let contract_id = env.register(NotificationPreferencesContract, ());
+        let admin = Address::generate(env);
+        let client = NotificationPreferencesContractClient::new(env, &contract_id);
+        client.initialize(&admin);
+        (contract_id, admin)
+    }
+
+    #[test]
+    fn test_default_preferences_on_chain_enabled() {
+        let env = Env::default();
+        let (contract_id, _) = setup(&env);
+        let client = NotificationPreferencesContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        let prefs = client.get_preferences(&user);
+        assert!(prefs.on_chain.enabled);
+    }
+
+    #[test]
+    fn test_update_channel_toggles_email() {
+        let env = Env::default();
+        env.ledger().set_timestamp(1000);
+        let (contract_id, _) = setup(&env);
+        let client = NotificationPreferencesContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        client.update_channel(&user, &NotificationChannel::Email, &true);
+        let prefs = client.get_preferences(&user);
+        assert!(prefs.email.enabled);
+    }
+}
