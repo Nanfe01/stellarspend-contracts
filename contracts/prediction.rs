@@ -60,3 +60,36 @@ impl PredictionEngine {
         env.storage().get(&user).unwrap_or_default()
     }
 }
+#[cfg(test)]
+mod prediction_tests {
+    use super::*;
+    use soroban_sdk::{Address, Env};
+
+    #[test]
+    fn test_same_inputs_give_same_output() {
+        let env = Env::default();
+        let user = Address::generate(&env);
+        PredictionEngine::add_transaction(env.clone(), user.clone(), 100, 1);
+        PredictionEngine::add_transaction(env.clone(), user.clone(), 200, 2);
+        let p1 = PredictionEngine::predict_spending(env.clone(), user.clone());
+        let p2 = PredictionEngine::predict_spending(env.clone(), user.clone());
+        assert_eq!(p1, p2);
+    }
+
+    #[test]
+    fn test_empty_user_returns_zero() {
+        let env = Env::default();
+        let user = Address::generate(&env);
+        let result = PredictionEngine::predict_spending(env.clone(), user.clone());
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn test_single_transaction_predicts_itself() {
+        let env = Env::default();
+        let user = Address::generate(&env);
+        PredictionEngine::add_transaction(env.clone(), user.clone(), 300, 1);
+        let result = PredictionEngine::predict_spending(env.clone(), user.clone());
+        assert_eq!(result, 300);
+    }
+}

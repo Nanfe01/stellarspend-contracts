@@ -629,3 +629,58 @@ impl HistoryContract {
         get_transaction_count(&env)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::{Address, Env, String};
+
+    fn setup() -> (Env, soroban_sdk::Address, soroban_sdk::Address) {
+        let env = Env::default();
+        env.mock_all_auths();
+        env.ledger().set_timestamp(1000);
+        let contract_id = env.register(HistoryContract, ());
+        let admin = Address::generate(&env);
+        let client = HistoryContractClient::new(&env, &contract_id);
+        client.initialize(&admin);
+        (env, contract_id, admin)
+    }
+
+    #[test]
+    fn test_store_and_get_transaction() {
+        let (env, contract_id, admin) = setup();
+        let client = HistoryContractClient::new(&env, &contract_id);
+        let from = Address::generate(&env);
+        let to = Address::generate(&env);
+        let id = client.store_transaction(
+            &from, &to, &500i128,
+            &String::from_str(&env, "payment"),
+            &TransactionType::Payment,
+        );
+        let tx = client.get_transaction(&id);
+        assert!(tx.is_some());
+        assert_eq!(tx.unwrap().amount, 500);
+    }
+
+    #[test]
+    fn test_get_transaction_count() {
+        let (env, contract_id, _) = setup();
+        let client = HistoryContractClient::new(&env, &contract_id);
+        assert_eq!(client.get_transaction_count(), 0);
+        let from = Address::generate(&env);
+        let to = Address::generate(&env);
+        client.store_transaction(&from, &to, &100i128,
+            &String::from_str(&env, "tx"), &TransactionType::Transfer);
+        assert_eq!(client.get_transaction_count(), 1);
+    }
+
+    #[test]
+    fn test_paginated_returns_empty_for_new_user() {
+        let (env, contract_id, _) = setup();
+        let client = HistoryContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        let result = client.get_user_transactions_paginated(&user, &0u32, &10u32, &SortOrder::Ascending);
+        assert_eq!(result.total_count, 0);
+        assert!(!result.has_next);
+    }
+}
