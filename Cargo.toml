@@ -1,23 +1,14 @@
 [workspace]
-resolver = "2"
 members = [
     "contracts/balance",
-    "contracts/stellarspend-contracts",
-    "contracts/transaction-analytics",
-    "contracts/contract-upgrade/old_contract",
-    "contracts/contract-upgrade/new_contract",
+
     "contracts/shared",
     "contracts/transfer",
     "contracts/batch-transfer",
     "contracts/batch-conversion",
     "contracts/batch-rewards",
-    "contracts/batch-payment",
     "contracts/batch-payment-reminders",
     "contracts/batch-wallet-creation",
-    "contracts/budget",
-    "contracts/budget-recommendations",
-    "contracts/fee",
-    "contracts/stellarspend-fee",
     "contracts/shared-budgets",
     "contracts/multi-currency-wallet",
     "contracts/spending-limits",
