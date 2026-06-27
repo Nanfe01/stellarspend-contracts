@@ -311,3 +311,129 @@ fn distribute_nonexistent_returns_error() {
         .expect("contract error");
     assert_eq!(err, AllowanceError::NotFound.into());
 }
+
+// ── Spending limits (#836) ──────────────────────────────────────────────────
+
+const WK: u64 = 604_800;
+
+#[test]
+fn default_allowance_has_no_spending_limit() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+    assert_eq!(client.get_allowance(&id).spending_limit, 0);
+}
+
+#[test]
+fn set_spending_limit_stores_value() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+
+    client.set_spending_limit(&id, &250);
+    assert_eq!(client.get_allowance(&id).spending_limit, 250);
+}
+
+#[test]
+fn set_spending_limit_rejects_negative() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+
+    let err = client
+        .try_set_spending_limit(&id, &-1)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::InvalidLimit.into());
+}
+
+#[test]
+fn set_spending_limit_fails_for_missing_allowance() {
+    let (_env, client, _o, _r, _t) = setup(1_000);
+    let err = client
+        .try_set_spending_limit(&999, &100)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::NotFound.into());
+}
+
+#[test]
+fn distribution_within_limit_succeeds() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let token_client = TokenClient::new(&env, &token);
+    let now = env.ledger().timestamp();
+
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+    client.set_spending_limit(&id, &250); // allows two payments of 100 (200 <= 250)
+
+    client.distribute(&id); // total 100
+    env.ledger().with_mut(|l| l.timestamp = now + WK + 1);
+    client.distribute(&id); // total 200
+
+    assert_eq!(token_client.balance(&recipient), 200);
+    assert_eq!(client.get_allowance(&id).distribution_count, 2);
+}
+
+#[test]
+fn distribution_exceeding_limit_is_rejected() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let token_client = TokenClient::new(&env, &token);
+    let now = env.ledger().timestamp();
+
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+    client.set_spending_limit(&id, &250);
+
+    client.distribute(&id); // 100
+    env.ledger().with_mut(|l| l.timestamp = now + WK + 1);
+    client.distribute(&id); // 200
+
+    // Third payment would bring the total to 300 > 250 → rejected.
+    env.ledger().with_mut(|l| l.timestamp = now + 2 * WK + 1);
+    let err = client
+        .try_distribute(&id)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::SpendingLimitExceeded.into());
+
+    // The cap held: recipient never received more than the limit allowed.
+    assert_eq!(token_client.balance(&recipient), 200);
+    assert_eq!(client.get_allowance(&id).distribution_count, 2);
+}
+
+#[test]
+fn limit_below_amount_blocks_first_distribution() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+    client.set_spending_limit(&id, &50); // 100 > 50 → even the first payment is blocked
+
+    let err = client
+        .try_distribute(&id)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::SpendingLimitExceeded.into());
+}
+
+#[test]
+fn zero_limit_means_unlimited() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let token_client = TokenClient::new(&env, &token);
+    let now = env.ledger().timestamp();
+
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+    client.set_spending_limit(&id, &200);
+    // Clear the cap back to unlimited.
+    client.set_spending_limit(&id, &0);
+
+    client.distribute(&id);
+    for week in 1..4u64 {
+        env.ledger().with_mut(|l| l.timestamp = now + week * WK + 1);
+        client.distribute(&id);
+    }
+    assert_eq!(token_client.balance(&recipient), 400); // 4 payments, no cap
+}

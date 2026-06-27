@@ -53,6 +53,10 @@ pub struct Allowance {
     pub active: bool,
     /// Whether the allowance is temporarily paused (issue #833).
     pub paused: bool,
+    /// Maximum cumulative amount that may ever be distributed for this
+    /// allowance (issue #836). `0` means unlimited. Enforced in `distribute`
+    /// against `amount × (distribution_count + 1)`.
+    pub spending_limit: i128,
 }
 
 /// Persistent storage keys for the allowances contract.
@@ -85,6 +89,10 @@ pub enum AllowanceError {
     NotPaused = 9,
     /// Allowance is paused — distribution blocked (#833)
     Paused = 10,
+    /// Distribution would exceed the configured spending limit (#836)
+    SpendingLimitExceeded = 11,
+    /// Spending limit must be non-negative (#836)
+    InvalidLimit = 12,
 }
 
 impl From<AllowanceError> for soroban_sdk::Error {

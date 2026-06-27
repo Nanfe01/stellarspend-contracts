@@ -11,6 +11,7 @@
 //! - #833 Add Allowance Pause/Resume   — `pause_allowance` / `resume_allowance`
 //! - #834 Add Allowance Cancellation   — `cancel_allowance` (already present, confirmed)
 //! - #835 Add Allowance Beneficiary Update — `update_beneficiary`
+//! - #836 Implement Allowance Spending Limits — `set_spending_limit` + cumulative cap enforced in `distribute`
 
 #![no_std]
 
@@ -64,6 +65,7 @@ impl AllowancesContract {
             distribution_count: 0,
             active: true,
             paused: false,
+            spending_limit: 0, // unlimited until an owner sets one (#836)
         };
 
         env.storage().persistent().set(&DataKey::Allowance(count), &allowance);
@@ -115,6 +117,17 @@ impl AllowancesContract {
         let now = env.ledger().timestamp();
         if now < allowance.next_distribution {
             panic_with_error!(&env, AllowanceError::TooEarlyToDistribute);
+        }
+
+        // Enforce the cumulative spending cap (#836). `0` means unlimited.
+        if allowance.spending_limit > 0 {
+            let projected = allowance
+                .amount
+                .checked_mul((allowance.distribution_count + 1) as i128)
+                .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::SpendingLimitExceeded));
+            if projected > allowance.spending_limit {
+                panic_with_error!(&env, AllowanceError::SpendingLimitExceeded);
+            }
         }
 
         let token_client = token::Client::new(&env, &allowance.token);
@@ -240,6 +253,40 @@ impl AllowancesContract {
         env.events().publish(
             (symbol_short!("allow"), symbol_short!("ben_upd"), allowance_id),
             (old_recipient, new_recipient),
+        );
+    }
+
+    // ── Spending limit (#836) ─────────────────────────────────────────────
+
+    /// Sets the maximum cumulative amount that may ever be distributed for an
+    /// allowance. Only the owner may call. A limit of `0` removes the cap
+    /// (unlimited). A positive limit caps total spend at that value; once the
+    /// cumulative `amount × distribution_count` would exceed it, `distribute`
+    /// returns `SpendingLimitExceeded`.
+    ///
+    /// # Errors
+    /// * `AllowanceError::NotFound`        - allowance does not exist
+    /// * `AllowanceError::AlreadyInactive` - allowance is no longer active
+    /// * `AllowanceError::InvalidLimit`    - `limit` is negative
+    pub fn set_spending_limit(env: Env, allowance_id: u64, limit: i128) {
+        let mut allowance: Allowance = env
+            .storage().persistent()
+            .get(&DataKey::Allowance(allowance_id))
+            .unwrap_or_else(|| panic_with_error!(&env, AllowanceError::NotFound));
+
+        allowance.owner.require_auth();
+        if limit < 0 {
+            panic_with_error!(&env, AllowanceError::InvalidLimit);
+        }
+        if !allowance.active {
+            panic_with_error!(&env, AllowanceError::AlreadyInactive);
+        }
+
+        allowance.spending_limit = limit;
+        env.storage().persistent().set(&DataKey::Allowance(allowance_id), &allowance);
+        env.events().publish(
+            (symbol_short!("allow"), symbol_short!("limit"), allowance_id),
+            limit,
         );
     }
 
