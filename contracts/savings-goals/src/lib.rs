@@ -25,13 +25,15 @@
 mod types;
 mod validation;
 
-use soroban_sdk::{contract, contractimpl, panic_with_error, symbol_short, Address, Bytes, Env, Symbol, Vec};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, symbol_short, Address, Bytes, Env, Symbol, Vec,
+};
 
 pub use crate::types::{
     BatchGoalMetrics, BatchGoalResult, BatchMilestoneMetrics, BatchMilestoneResult,
-    ContributionRecord, DataKey, ErrorCode, GoalEvents, GoalResult, GoalSnapshot,
+    ContributionRecord, DataKey, ErrorCode, GoalCertificate, GoalEvents, GoalResult, GoalSnapshot,
     MilestoneAchievement, MilestoneAchievementRequest, MilestoneResult, SavingsGoal,
-    SavingsGoalProgress, SavingsGoalRequest, MAX_BATCH_SIZE, REVERSAL_PERIOD_SECS, GoalCertificate,
+    SavingsGoalProgress, SavingsGoalRequest, MAX_BATCH_SIZE, REVERSAL_PERIOD_SECS,
 };
 use crate::validation::{validate_goal_name_unique, validate_goal_request};
 
@@ -1443,7 +1445,9 @@ impl SavingsGoalsContract {
     /// Retrieves the goal completion certificate for a given goal.
     /// Returns `None` if the goal hasn't reached 100% yet.
     pub fn get_certificate(env: Env, goal_id: u64) -> Option<GoalCertificate> {
-        env.storage().persistent().get(&DataKey::Certificate(goal_id))
+        env.storage()
+            .persistent()
+            .get(&DataKey::Certificate(goal_id))
     }
 
     /// Merges an active source goal into an active target goal.
@@ -1478,10 +1482,12 @@ impl SavingsGoalsContract {
 
         // Perform merge
         let transferred_amount = source_goal.current_amount;
-        target_goal.current_amount = target_goal.current_amount.saturating_add(transferred_amount);
+        target_goal.current_amount = target_goal
+            .current_amount
+            .saturating_add(transferred_amount);
         source_goal.current_amount = 0;
         source_goal.is_active = false;
-        
+
         target_goal.is_complete = target_goal.current_amount >= target_goal.target_amount;
 
         env.storage()
@@ -1494,7 +1500,8 @@ impl SavingsGoalsContract {
         Self::check_and_emit_milestones(&env, target_goal_id);
 
         let topics = (symbol_short!("goal"), symbol_short!("merged"));
-        env.events().publish(topics, (source_goal_id, target_goal_id, transferred_amount));
+        env.events()
+            .publish(topics, (source_goal_id, target_goal_id, transferred_amount));
     }
 
     fn default_deadline_alert_thresholds(env: &Env) -> Vec<u64> {

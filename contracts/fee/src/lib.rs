@@ -446,8 +446,16 @@ impl FeeContract {
         let result = reconcile(&env);
 
         env.events().publish(
-            (soroban_sdk::symbol_short!("fee"), soroban_sdk::symbol_short!("reconcile")),
-            (result.stored_balance, result.calculated_balance, result.discrepancy, result.is_reconciled),
+            (
+                soroban_sdk::symbol_short!("fee"),
+                soroban_sdk::symbol_short!("reconcile"),
+            ),
+            (
+                result.stored_balance,
+                result.calculated_balance,
+                result.discrepancy,
+                result.is_reconciled,
+            ),
         );
 
         result

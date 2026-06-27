@@ -865,7 +865,9 @@ impl BudgetContract {
 
         if !rules.contains(&rule) {
             rules.push_back(rule);
-            env.storage().persistent().set(&DataKey::GlobalRules, &rules);
+            env.storage()
+                .persistent()
+                .set(&DataKey::GlobalRules, &rules);
         }
     }
 
@@ -882,7 +884,9 @@ impl BudgetContract {
 
         if !rules.contains(&rule) {
             rules.push_back(rule);
-            env.storage().persistent().set(&DataKey::UserRules(user), &rules);
+            env.storage()
+                .persistent()
+                .set(&DataKey::UserRules(user), &rules);
         }
     }
 
