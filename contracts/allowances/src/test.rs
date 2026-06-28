@@ -1,9 +1,10 @@
 #![cfg(test)]
 
 use soroban_sdk::{
+    symbol_short,
     testutils::{Address as _, Events as _, Ledger as _},
     token::{StellarAssetClient, TokenClient},
-    Address, Env,
+    Address, Env, IntoVal, Symbol, TryFromVal,
 };
 
 use crate::{AllowancesContract, AllowancesContractClient};
@@ -436,4 +437,191 @@ fn zero_limit_means_unlimited() {
         client.distribute(&id);
     }
     assert_eq!(token_client.balance(&recipient), 400); // 4 payments, no cap
+// ── Payment events (#838) ───────────────────────────────────────────────────
+
+const PWEEK: u64 = 604_800;
+
+/// Counts emitted events whose topics are `("allow", "payment", _)`.
+fn payment_event_count(env: &Env) -> u32 {
+    let mut count = 0u32;
+    for (_addr, topics, _data) in env.events().all().iter() {
+        if topics.len() == 3 {
+            let t1 = Symbol::try_from_val(env, &topics.get(1).unwrap());
+            if t1.map(|s| s == symbol_short!("payment")).unwrap_or(false) {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+#[test]
+fn distribution_emits_payment_event_with_recipient_and_amount() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+
+    client.distribute(&id);
+
+    // Exact topic/data: ("allow","payment", id) → (recipient, amount).
+    let expected = (
+        client.address.clone(),
+        (symbol_short!("allow"), symbol_short!("payment"), id).into_val(&env),
+        (recipient.clone(), 100i128).into_val(&env),
+    );
+    assert!(
+        env.events().all().contains(expected),
+        "a payment event with (recipient, amount) must be emitted"
+    );
+}
+
+#[test]
+fn payment_event_emitted_on_every_payment() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &50, &Frequency::Weekly, &now);
+
+    // `events().all()` reflects the most recent invocation. Each `distribute`
+    // invocation must emit exactly one payment event; creation emits none.
+    assert_eq!(payment_event_count(&env), 0, "creation emits no payment event");
+
+    client.distribute(&id);
+    assert_eq!(payment_event_count(&env), 1, "first payment emits one event");
+
+    env.ledger().with_mut(|l| l.timestamp = now + PWEEK + 1);
+    client.distribute(&id);
+    assert_eq!(payment_event_count(&env), 1, "second payment emits one event");
+
+    env.ledger().with_mut(|l| l.timestamp = now + 2 * PWEEK + 1);
+    client.distribute(&id);
+    assert_eq!(payment_event_count(&env), 1, "third payment emits one event");
+}
+
+#[test]
+fn payment_event_uses_current_recipient_after_beneficiary_change() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let now = env.ledger().timestamp();
+    let new_recipient = Address::generate(&env);
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+
+    client.update_beneficiary(&id, &new_recipient);
+    client.distribute(&id);
+
+    let expected = (
+        client.address.clone(),
+        (symbol_short!("allow"), symbol_short!("payment"), id).into_val(&env),
+        (new_recipient.clone(), 100i128).into_val(&env),
+    );
+    assert!(
+        env.events().all().contains(expected),
+        "payment event must reflect the updated recipient"
+    );
+// ── Allowance expiration (#839) ─────────────────────────────────────────────
+
+const EWEEK: u64 = 604_800;
+
+#[test]
+fn allowance_has_no_expiry_by_default() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+    assert_eq!(client.get_allowance(&id).end_date, 0);
+    assert!(!client.is_expired(&id));
+}
+
+#[test]
+fn set_expiration_stores_end_date() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+
+    client.set_expiration(&id, &(now + 10 * EWEEK));
+    assert_eq!(client.get_allowance(&id).end_date, now + 10 * EWEEK);
+    assert!(!client.is_expired(&id));
+}
+
+#[test]
+fn set_expiration_rejects_past_timestamp() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    env.ledger().with_mut(|l| l.timestamp = now + 1_000);
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &(now + 1_000));
+
+    let err = client
+        .try_set_expiration(&id, &(now + 500)) // in the past relative to current ledger time
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::InvalidExpiration.into());
+}
+
+#[test]
+fn distribution_before_expiry_succeeds() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let token_client = TokenClient::new(&env, &token);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+
+    client.set_expiration(&id, &(now + 3 * EWEEK));
+
+    client.distribute(&id); // now < end_date → ok
+    assert_eq!(token_client.balance(&recipient), 100);
+}
+
+#[test]
+fn expired_allowance_stops_distributing() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let token_client = TokenClient::new(&env, &token);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+
+    // Expire after two weeks.
+    client.set_expiration(&id, &(now + 2 * EWEEK));
+
+    client.distribute(&id); // week 0 — ok
+    env.ledger().with_mut(|l| l.timestamp = now + EWEEK + 1);
+    client.distribute(&id); // week 1 — ok (still before end)
+    assert_eq!(token_client.balance(&recipient), 200);
+
+    // Move past the end date → distributions stop automatically.
+    env.ledger().with_mut(|l| l.timestamp = now + 2 * EWEEK + 1);
+    assert!(client.is_expired(&id));
+    let err = client
+        .try_distribute(&id)
+        .err()
+        .expect("expired distribute must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::Expired.into());
+
+    // No further funds moved.
+    assert_eq!(token_client.balance(&recipient), 200);
+}
+
+#[test]
+fn clearing_expiration_resumes_distribution() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let token_client = TokenClient::new(&env, &token);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
+
+    client.set_expiration(&id, &(now + EWEEK)); // expires in a week
+    env.ledger().with_mut(|l| l.timestamp = now + EWEEK + 1);
+    assert!(client.is_expired(&id));
+
+    // Owner clears the expiry (0) → no longer expired, distribution works.
+    client.set_expiration(&id, &0);
+    assert!(!client.is_expired(&id));
+    client.distribute(&id);
+    assert_eq!(token_client.balance(&recipient), 100);
+}
+
+#[test]
+fn set_expiration_fails_for_missing_allowance() {
+    let (_env, client, _o, _r, _t) = setup(1_000);
+    let err = client
+        .try_set_expiration(&999, &1)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::NotFound.into());
 }
