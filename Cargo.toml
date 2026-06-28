@@ -1,26 +1,18 @@
 [workspace]
-resolver = "2"
 members = [
     "contracts/balance",
-    "contracts/stellarspend-contracts",
-    "contracts/transaction-analytics",
-    "contracts/contract-upgrade/old_contract",
-    "contracts/contract-upgrade/new_contract",
+
     "contracts/shared",
     "contracts/transfer",
     "contracts/batch-transfer",
     "contracts/batch-conversion",
     "contracts/batch-rewards",
-    "contracts/batch-payment",
     "contracts/batch-payment-reminders",
     "contracts/batch-wallet-creation",
-    "contracts/budget",
-    "contracts/budget-recommendations",
-    "contracts/fee",
-    "contracts/stellarspend-fee",
     "contracts/shared-budgets",
     "contracts/multi-currency-wallet",
     "contracts/spending-limits",
+    "contracts/savings",
     "contracts/savings-goals",
     "contracts/batch-history",
     "contracts/batch-notifications",
@@ -55,6 +47,8 @@ autotests = false
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+savings = { path = "contracts/savings" }
+savings-goals = { path = "contracts/savings-goals" }
 
 [[test]]
 name = "snapshot_tests"
@@ -77,12 +71,21 @@ name = "concurrent_spending_tests"
 path = "contracts/tests/concurrent_spending_tests.rs"
 
 [[test]]
+name = "savings_goals_test"
+path = "contracts/tests/savings_goals_test.rs"
+
+[[test]]
+
 name = "governance_tests"
 path = "tests/governance_tests.rs"
 
 [[test]]
+Add-integration-test-for-savings-savings-goals-interaction
+name = "throttling_tests"
+path = "tests/throttling_tests.rs"
 name = "throttling_test"
 path = "contracts/tests/throttling_test.rs"
+
 
 [[test]]
 name = "timelock_tests"

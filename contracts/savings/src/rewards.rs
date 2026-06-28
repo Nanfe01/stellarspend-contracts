@@ -52,3 +52,12 @@ pub fn claim_reward(
 
     reward
 }
+
+pub fn set_reward_amount(
+    env: &Env,
+    amount: i128,
+) {
+    env.storage()
+        .instance()
+        .set(&DataKey::RewardAmount, &amount);
+}

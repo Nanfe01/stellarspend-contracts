@@ -1,3 +1,7 @@
+mod rewards;
+pub mod storage;
+pub mod types;
+
 use soroban_sdk::{
     contract,
     contractimpl,
