@@ -439,6 +439,8 @@ impl AllowancesContract {
             (symbol_short!("allow"), symbol_short!("own_xfer"), allowance_id),
             (old_owner, new_owner),
         );
+    }
+
         allowance.owner.require_auth();
         if limit < 0 {
             panic_with_error!(&env, AllowanceError::InvalidLimit);

@@ -691,6 +691,88 @@ fn analytics_for_missing_allowance_fails() {
         .err()
         .expect("must fail")
         .expect("contract error");
+    assert_eq!(err, AllowanceError::ApprovalRequired.into());
+}
+
+#[test]
+fn approve_activates_and_allows_distribution() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let now = env.ledger().timestamp();
+    let approver = Address::generate(&env);
+
+    client.set_approval_config(&approver, &100);
+    let id = client.create_allowance(&owner, &recipient, &token, &500, &Frequency::Once, &now);
+
+    client.approve_allowance(&id);
+    let a = client.get_allowance(&id);
+    assert!(a.active);
+    assert!(!a.pending_approval);
+
+    // Now distribution succeeds.
+    client.distribute(&id);
+    assert_eq!(client.get_allowance(&id).distribution_count, 1);
+}
+
+#[test]
+fn approve_rejects_non_pending_allowance() {
+    let (env, client, owner, recipient, token) = setup(10_000);
+    let now = env.ledger().timestamp();
+    let approver = Address::generate(&env);
+
+    client.set_approval_config(&approver, &100);
+    // Below threshold → active, not pending.
+    let id = client.create_allowance(&owner, &recipient, &token, &50, &Frequency::Once, &now);
+
+    let err = client
+        .try_approve_allowance(&id)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::NotPendingApproval.into());
+}
+
+#[test]
+fn approve_without_config_fails() {
+    let (env, client, _owner, _recipient, _token) = setup(1_000);
+    let err = client
+        .try_approve_allowance(&1)
+        .err()
+        .expect("must fail")
+        .expect("contract error");
+    assert_eq!(err, AllowanceError::ApproverNotConfigured.into());
+}
+
+// ── Ownership transfer (#845) ───────────────────────────────────────────────
+
+#[test]
+fn transfer_ownership_reassigns_owner_and_indices() {
+    let (env, client, owner, recipient, token) = setup(2_000);
+    let now = env.ledger().timestamp();
+    let new_owner = Address::generate(&env);
+
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+
+    client.transfer_ownership(&id, &new_owner);
+
+    let a = client.get_allowance(&id);
+    assert_eq!(a.owner, new_owner, "new owner controls the allowance");
+
+    assert!(client.get_owner_allowances(&new_owner).contains(&id));
+    assert!(!client.get_owner_allowances(&owner).contains(&id));
+}
+
+#[test]
+fn transfer_ownership_then_new_owner_can_cancel() {
+    let (env, client, owner, recipient, token) = setup(2_000);
+    let now = env.ledger().timestamp();
+    let new_owner = Address::generate(&env);
+
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+    client.transfer_ownership(&id, &new_owner);
+
+    // New owner-controlled action succeeds; allowance becomes inactive.
+    client.cancel_allowance(&id);
+    assert!(!client.get_allowance(&id).active);
     assert_eq!(err, AllowanceError::SpendingLimitExceeded.into());
 }
 
