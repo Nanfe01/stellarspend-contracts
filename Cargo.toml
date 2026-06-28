@@ -36,6 +36,7 @@ members = [
     "contracts/zk-verifier",
     "contracts/pausable",
     "contracts/allowances",
+    "contracts/rewards",
 ]
 
 [package]
@@ -80,9 +81,10 @@ name = "governance_tests"
 path = "tests/governance_tests.rs"
 
 [[test]]
-Add-integration-test-for-savings-savings-goals-interaction
 name = "throttling_tests"
 path = "tests/throttling_tests.rs"
+
+[[test]]
 name = "throttling_test"
 path = "contracts/tests/throttling_test.rs"
 
