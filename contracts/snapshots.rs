@@ -133,3 +133,51 @@ impl SnapshotsContract {
         }
     }
 }
+
+#[cfg(test)]
+mod snapshot_extra_tests {
+    use super::*;
+    use soroban_sdk::{Address, Env};
+
+    fn setup(env: &Env) -> (soroban_sdk::Address, soroban_sdk::Address) {
+        env.mock_all_auths();
+        env.ledger().set_timestamp(0);
+        let contract_id = env.register(SnapshotsContract, ());
+        let admin = Address::generate(env);
+        let client = SnapshotsContractClient::new(env, &contract_id);
+        client.initialize(&admin, &86_400u64);
+        (contract_id, admin)
+    }
+
+    #[test]
+    fn test_create_and_restore_snapshot() {
+        let env = Env::default();
+        let (contract_id, admin) = setup(&env);
+        env.ledger().set_timestamp(86_400);
+        let client = SnapshotsContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        client.create_snapshot(&admin, &user, &500i128, &86_400u64);
+        let snap = client.get_snapshot_at_period(&user, &86_400u64);
+        assert!(snap.is_some());
+        assert_eq!(snap.unwrap().amount, 500);
+    }
+
+    #[test]
+    fn test_snapshot_returns_none_for_missing() {
+        let env = Env::default();
+        let (contract_id, _) = setup(&env);
+        let client = SnapshotsContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        let snap = client.get_snapshot_at_period(&user, &86_400u64);
+        assert!(snap.is_none());
+    }
+
+    #[test]
+    fn test_period_duration_stored() {
+        let env = Env::default();
+        let (contract_id, _) = setup(&env);
+        let client = SnapshotsContractClient::new(&env, &contract_id);
+        let dur = client.get_period_duration();
+        assert_eq!(dur, Some(86_400u64));
+    }
+}
