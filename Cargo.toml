@@ -76,7 +76,6 @@ name = "savings_goals_test"
 path = "contracts/tests/savings_goals_test.rs"
 
 [[test]]
-
 name = "governance_tests"
 path = "tests/governance_tests.rs"
 

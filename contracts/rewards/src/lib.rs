@@ -6,17 +6,12 @@
 
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env};
+pub mod storage;
+pub mod types;
 
-/// Storage keys for the rewards contract.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DataKey {
-    /// Contract administrator address.
-    Admin,
-    /// Whether the contract has been initialised.
-    Initialized,
-}
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env};
+
+pub use crate::types::{DataKey, RewardAccount};
 
 /// Error codes for the rewards contract.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -59,8 +54,7 @@ impl RewardsContract {
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Initialized, &true);
 
-        env.events()
-            .publish(("rewards", "initialized"), admin);
+        env.events().publish(("rewards", "initialized"), admin);
     }
 
     /// Returns the current admin address.
