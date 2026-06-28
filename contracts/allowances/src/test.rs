@@ -313,6 +313,20 @@ fn distribute_nonexistent_returns_error() {
     assert_eq!(err, AllowanceError::NotFound.into());
 }
 
+// ── Allowance payment history (#837) ────────────────────────────────────────
+
+const HWEEK: u64 = 604_800;
+
+#[test]
+fn history_is_empty_before_any_distribution() {
+    let (env, client, owner, recipient, token) = setup(1_000);
+    let now = env.ledger().timestamp();
+    let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Once, &now);
+    assert_eq!(client.get_allowance_history(&id).len(), 0);
+}
+
+#[test]
+fn history_records_a_payment() {
 // ── Payment events (#838) ───────────────────────────────────────────────────
 
 const PWEEK: u64 = 604_800;
@@ -339,6 +353,16 @@ fn distribution_emits_payment_event_with_recipient_and_amount() {
 
     client.distribute(&id);
 
+    let history = client.get_allowance_history(&id);
+    assert_eq!(history.len(), 1);
+    let rec = history.get(0).unwrap();
+    assert_eq!(rec.amount, 100);
+    assert_eq!(rec.timestamp, now);
+    assert_eq!(rec.recipient, recipient);
+}
+
+#[test]
+fn history_accumulates_across_recurring_payments() {
     // Exact topic/data: ("allow","payment", id) → (recipient, amount).
     let expected = (
         client.address.clone(),
@@ -357,6 +381,21 @@ fn payment_event_emitted_on_every_payment() {
     let now = env.ledger().timestamp();
     let id = client.create_allowance(&owner, &recipient, &token, &50, &Frequency::Weekly, &now);
 
+    client.distribute(&id);
+    env.ledger().with_mut(|l| l.timestamp = now + HWEEK + 1);
+    let t2 = env.ledger().timestamp();
+    client.distribute(&id);
+
+    let history = client.get_allowance_history(&id);
+    assert_eq!(history.len(), 2);
+    assert_eq!(history.get(0).unwrap().timestamp, now);
+    assert_eq!(history.get(1).unwrap().timestamp, t2);
+    assert_eq!(history.get(0).unwrap().amount, 50);
+    assert_eq!(history.get(1).unwrap().amount, 50);
+}
+
+#[test]
+fn history_captures_recipient_at_payment_time() {
     // `events().all()` reflects the most recent invocation. Each `distribute`
     // invocation must emit exactly one payment event; creation emits none.
     assert_eq!(payment_event_count(&env), 0, "creation emits no payment event");
@@ -380,6 +419,24 @@ fn payment_event_uses_current_recipient_after_beneficiary_change() {
     let new_recipient = Address::generate(&env);
     let id = client.create_allowance(&owner, &recipient, &token, &100, &Frequency::Weekly, &now);
 
+    // First payment goes to the original recipient.
+    client.distribute(&id);
+
+    // Change beneficiary, then make the next payment.
+    client.update_beneficiary(&id, &new_recipient);
+    env.ledger().with_mut(|l| l.timestamp = now + HWEEK + 1);
+    client.distribute(&id);
+
+    let history = client.get_allowance_history(&id);
+    assert_eq!(history.len(), 2);
+    assert_eq!(history.get(0).unwrap().recipient, recipient);
+    assert_eq!(history.get(1).unwrap().recipient, new_recipient);
+}
+
+#[test]
+fn history_for_missing_allowance_is_empty() {
+    let (_env, client, _o, _r, _t) = setup(1_000);
+    assert_eq!(client.get_allowance_history(&999).len(), 0);
     client.update_beneficiary(&id, &new_recipient);
     client.distribute(&id);
 

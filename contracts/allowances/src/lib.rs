@@ -11,6 +11,7 @@
 //! - #833 Add Allowance Pause/Resume   — `pause_allowance` / `resume_allowance`
 //! - #834 Add Allowance Cancellation   — `cancel_allowance` (already present, confirmed)
 //! - #835 Add Allowance Beneficiary Update — `update_beneficiary`
+//! - #837 Add Allowance History         — per-distribution `PaymentRecord` log + `get_allowance_history`
 //! - #838 Emit Allowance Payment Events  — `("allow","payment",id)` → (recipient, amount) on every payment
 //! - #839 Add Allowance Expiration      — `set_expiration` / `is_expired`; `distribute` stops past `end_date`
 
@@ -25,7 +26,7 @@ use soroban_sdk::{
     contract, contractimpl, panic_with_error, symbol_short, token, Address, Env, Vec,
 };
 
-use types::{AllowanceError, Allowance, DataKey, Frequency};
+use types::{AllowanceError, Allowance, DataKey, Frequency, PaymentRecord};
 
 #[contract]
 pub struct AllowancesContract;
@@ -140,6 +141,19 @@ impl AllowancesContract {
         );
 
         allowance.distribution_count += 1;
+
+        // Append to the allowance's payment history (#837): amount, timestamp,
+        // and the recipient at the time of this payment.
+        let mut history: Vec<PaymentRecord> = env
+            .storage().persistent()
+            .get(&DataKey::AllowanceHistory(allowance_id))
+            .unwrap_or(Vec::new(&env));
+        history.push_back(PaymentRecord {
+            amount: allowance.amount,
+            timestamp: now,
+            recipient: allowance.recipient.clone(),
+        });
+        env.storage().persistent().set(&DataKey::AllowanceHistory(allowance_id), &history);
 
         match allowance.frequency.interval_seconds() {
             None => {
@@ -314,6 +328,14 @@ impl AllowancesContract {
     pub fn get_owner_allowances(env: Env, owner: Address) -> Vec<u64> {
         env.storage().persistent()
             .get(&DataKey::OwnerAllowances(owner))
+            .unwrap_or(Vec::new(&env))
+    }
+
+    /// Returns the full payment history for an allowance (#837), oldest first.
+    /// Empty if no distributions have occurred (or the allowance does not exist).
+    pub fn get_allowance_history(env: Env, allowance_id: u64) -> Vec<PaymentRecord> {
+        env.storage().persistent()
+            .get(&DataKey::AllowanceHistory(allowance_id))
             .unwrap_or(Vec::new(&env))
     }
 
