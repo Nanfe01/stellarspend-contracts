@@ -488,3 +488,59 @@ impl StreakRewardsContract {
         Self::load_config(&env)
     }
 }
+#[cfg(test)]
+mod streak_tests {
+    use super::*;
+    use soroban_sdk::{Address, Env, testutils::Ledger};
+
+    fn make_env() -> Env {
+        let env = Env::default();
+        env.mock_all_auths();
+        env.ledger().set_timestamp(86_400); // day 1
+        env
+    }
+
+    #[test]
+    fn test_streak_starts_at_one() {
+        let env = make_env();
+        let contract_id = env.register(StreakRewardsContract, ());
+        let client = StreakRewardsContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token = Address::generate(&env);
+        client.initialize(&admin, &token, &10i128, &50i128, &200i128);
+        let user = Address::generate(&env);
+        let streak = client.record_deposit(&user);
+        assert_eq!(streak, 1);
+    }
+
+    #[test]
+    fn test_streak_increments_next_day() {
+        let env = make_env();
+        let contract_id = env.register(StreakRewardsContract, ());
+        let client = StreakRewardsContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token = Address::generate(&env);
+        client.initialize(&admin, &token, &10i128, &50i128, &200i128);
+        let user = Address::generate(&env);
+        client.record_deposit(&user);
+        env.ledger().set_timestamp(86_400 * 2);
+        let streak = client.record_deposit(&user);
+        assert_eq!(streak, 2);
+    }
+
+    #[test]
+    fn test_streak_resets_on_missed_day() {
+        let env = make_env();
+        let contract_id = env.register(StreakRewardsContract, ());
+        let client = StreakRewardsContractClient::new(&env, &contract_id);
+        let admin = Address::generate(&env);
+        let token = Address::generate(&env);
+        client.initialize(&admin, &token, &10i128, &50i128, &200i128);
+        let user = Address::generate(&env);
+        client.record_deposit(&user);
+        // Skip a day (day 3)
+        env.ledger().set_timestamp(86_400 * 3);
+        let streak = client.record_deposit(&user);
+        assert_eq!(streak, 1);
+    }
+}

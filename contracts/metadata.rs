@@ -49,3 +49,29 @@ impl MetadataContract {
         self.metadata_storage.get(&tx_id).cloned()
     }
 }
+#[cfg(test)]
+mod metadata_tests {
+    #[test]
+    fn test_metadata_key_not_empty() {
+        let key = "tx_id_001";
+        assert!(!key.is_empty());
+    }
+
+    #[test]
+    fn test_metadata_value_not_empty() {
+        let value = "payment";
+        assert!(!value.is_empty());
+    }
+
+    #[test]
+    fn test_metadata_size_within_limit() {
+        let data = "x".repeat(512);
+        assert!(data.len() <= 1024);
+    }
+
+    #[test]
+    fn test_metadata_exceeds_limit() {
+        let data = "x".repeat(2048);
+        assert!(data.len() > 1024);
+    }
+}

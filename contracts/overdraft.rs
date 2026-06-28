@@ -611,3 +611,62 @@ mod tests {
         assert_eq!(cat_budget_after.spent, 0);
     }
 }
+
+#[cfg(test)]
+mod overdraft_extra_tests {
+    use super::*;
+    use soroban_sdk::{Address, Env, symbol_short};
+
+    fn setup(env: &Env) -> (soroban_sdk::Address, soroban_sdk::Address) {
+        env.mock_all_auths();
+        env.ledger().set_timestamp(1000);
+        let contract_id = env.register(OverdraftContract, ());
+        let client = OverdraftContractClient::new(env, &contract_id);
+        let admin = Address::generate(env);
+        client.initialize(&admin);
+        (contract_id, admin)
+    }
+
+    #[test]
+    fn test_admin_override_path() {
+        let env = Env::default();
+        let (contract_id, admin) = setup(&env);
+        let client = OverdraftContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        let cat = symbol_short!("rent");
+        client.set_category_budget(&admin, &user, &cat, &1000i128);
+        // Admin records spending without validation (override path)
+        client.record_spending(&admin, &user, &cat, &1200i128);
+        let budget = client.get_category_budget(&user, &cat).unwrap();
+        assert_eq!(budget.spent, 1200);
+    }
+
+    #[test]
+    fn test_overdraft_attempt_increments_counter() {
+        let env = Env::default();
+        let (contract_id, admin) = setup(&env);
+        let client = OverdraftContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        let cat = symbol_short!("food");
+        client.set_category_budget(&admin, &user, &cat, &50i128);
+        let _ = std::panic::catch_unwind(|| {
+            client.validate_transaction(&user, &cat, &100i128);
+        });
+        // Counter should have incremented to 1
+        assert_eq!(client.get_total_overdraft_attempts(), 1);
+    }
+
+    #[test]
+    fn test_check_transaction_does_not_modify_state() {
+        let env = Env::default();
+        let (contract_id, admin) = setup(&env);
+        let client = OverdraftContractClient::new(&env, &contract_id);
+        let user = Address::generate(&env);
+        let cat = symbol_short!("misc");
+        client.set_category_budget(&admin, &user, &cat, &500i128);
+        client.check_transaction(&user, &cat, &300i128);
+        // Spent should still be 0 (check doesn't modify)
+        let budget = client.get_category_budget(&user, &cat).unwrap();
+        assert_eq!(budget.spent, 0);
+    }
+}
