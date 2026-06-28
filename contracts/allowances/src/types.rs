@@ -59,6 +59,9 @@ pub struct Allowance {
     /// threshold (issue #845). A pending allowance is created `active = false`
     /// and only becomes active once an approver calls `approve_allowance`.
     pub pending_approval: bool,
+    /// Ledger timestamp after which the allowance expires and distributions
+    /// stop automatically (issue #839). `0` means it never expires.
+    pub end_date: u64,
 }
 
 /// Persistent storage keys for the allowances contract.
@@ -104,6 +107,10 @@ pub enum AllowanceError {
     ApprovalRequired = 13,
     /// Approval threshold must be positive (#845)
     InvalidThreshold = 14,
+    /// Allowance has passed its end date and is expired (#839)
+    Expired = 11,
+    /// Expiration timestamp must be in the future (or 0 to clear) (#839)
+    InvalidExpiration = 12,
 }
 
 impl From<AllowanceError> for soroban_sdk::Error {
