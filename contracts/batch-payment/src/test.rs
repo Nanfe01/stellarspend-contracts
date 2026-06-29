@@ -65,9 +65,9 @@ fn test_batch_transfer() {
     let receipt_topic = soroban_sdk::symbol_short!("receipt");
     let receipt_found = events.iter().any(|event| {
         event
-            .1
-            .iter()
-            .any(|topic| Symbol::try_from_val(&env, &topic).ok() == Some(receipt_topic.clone()))
+            .topics
+            .get(0)
+            .map_or(false, |topic| topic == receipt_topic.clone().into())
     });
     assert!(
         receipt_found,

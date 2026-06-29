@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-use soroban_sdk::{Address, Env, String};
-
 /// StellarSpend fee contract crate root: re-exports the fee contract and contract metrics types.
 pub mod auth;
 pub mod fee;
@@ -46,7 +44,7 @@ mod contract_metrics_tests {
     }
 }
 pub fn admin_set_user_fee_override(env: Env, admin: Address, user: Address, fee_bps: u32) {
-    FeeContract::require_admin(&env, &admin);
+    require_admin(&env, &admin);
     admin.require_auth();
 
     storage::set_user_fee_override(&env, user.clone(), fee_bps);
@@ -55,7 +53,7 @@ pub fn admin_set_user_fee_override(env: Env, admin: Address, user: Address, fee_
 }
 
 pub fn admin_remove_user_fee_override(env: Env, admin: Address, user: Address) {
-    FeeContract::require_admin(&env, &admin);
+    require_admin(&env, &admin);
     admin.require_auth();
 
     storage::remove_user_fee_override(&env, user.clone());
