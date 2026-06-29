@@ -5,8 +5,8 @@ use soroban_sdk::{testutils::Address as _, Address, Env};
 use crate::{
     storage::{
         get_lifetime_claimed, get_lifetime_earned, get_reward_account, get_reward_balance,
-        has_reward_account, set_lifetime_claimed, set_lifetime_earned, set_reward_account,
-        set_reward_balance,
+        get_reward_transaction, get_reward_tx_counter, has_reward_account, set_lifetime_claimed,
+        set_lifetime_earned, set_reward_account, set_reward_balance,
     },
     types::{RewardAccount, RewardStatus, RewardTransaction, RewardType},
     RewardsContract, RewardsContractClient,
@@ -285,6 +285,189 @@ fn test_multiple_accounts_are_independent() {
     assert_eq!(a.owner, user_a);
     assert_eq!(b.owner, user_b);
     assert_ne!(a.owner, b.owner);
+}
+
+// ── Reward crediting tests (#879) ─────────────────────────────────────────────
+
+fn setup_with_user() -> (Env, Address, Address, RewardsContractClient<'static>) {
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let user = Address::generate(&env);
+    client.register_account(&user);
+    (env, admin, user, client)
+}
+
+#[test]
+fn test_credit_reward_updates_balance() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &1_000_000, &RewardType::SpendingLimit);
+    let account = client.get_account(&user).unwrap();
+    assert_eq!(account.balance, 1_000_000);
+}
+
+#[test]
+fn test_credit_reward_updates_lifetime_earned() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &500_000, &RewardType::SavingsGoal);
+    let account = client.get_account(&user).unwrap();
+    assert_eq!(account.lifetime_earned, 500_000);
+}
+
+#[test]
+fn test_credit_reward_does_not_change_lifetime_claimed() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &250_000, &RewardType::Streak);
+    let account = client.get_account(&user).unwrap();
+    assert_eq!(account.lifetime_claimed, 0);
+}
+
+#[test]
+fn test_credit_reward_accumulates_across_multiple_credits() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &100_000, &RewardType::Referral);
+    client.credit_reward(&admin, &user, &200_000, &RewardType::ManualGrant);
+    client.credit_reward(&admin, &user, &300_000, &RewardType::Streak);
+    let account = client.get_account(&user).unwrap();
+    assert_eq!(account.balance, 600_000);
+    assert_eq!(account.lifetime_earned, 600_000);
+}
+
+#[test]
+fn test_credit_reward_returns_correct_transaction_fields() {
+    let (_env, admin, user, client) = setup_with_user();
+    let tx = client.credit_reward(&admin, &user, &750_000, &RewardType::SavingsGoal);
+    assert_eq!(tx.recipient, user);
+    assert_eq!(tx.amount, 750_000);
+    assert_eq!(tx.reward_type, RewardType::SavingsGoal);
+    assert_eq!(tx.status, RewardStatus::Confirmed);
+    assert_eq!(tx.updated_at, 0);
+}
+
+#[test]
+fn test_credit_reward_assigns_incrementing_tx_ids() {
+    let (_env, admin, user, client) = setup_with_user();
+    let tx0 = client.credit_reward(&admin, &user, &100, &RewardType::Streak);
+    let tx1 = client.credit_reward(&admin, &user, &200, &RewardType::Streak);
+    let tx2 = client.credit_reward(&admin, &user, &300, &RewardType::Streak);
+    assert_eq!(tx0.id, 0);
+    assert_eq!(tx1.id, 1);
+    assert_eq!(tx2.id, 2);
+}
+
+#[test]
+fn test_credit_reward_persists_transaction_record() {
+    let (env, admin, user, client) = setup_with_user();
+    let contract_id = client.address.clone();
+    client.credit_reward(&admin, &user, &999, &RewardType::ManualGrant);
+    env.as_contract(&contract_id, || {
+        let tx = get_reward_transaction(&env, 0);
+        assert!(tx.is_some());
+        let tx = tx.unwrap();
+        assert_eq!(tx.amount, 999);
+        assert_eq!(tx.reward_type, RewardType::ManualGrant);
+        assert_eq!(tx.status, RewardStatus::Confirmed);
+    });
+}
+
+#[test]
+fn test_credit_reward_advances_tx_counter() {
+    let (env, admin, user, client) = setup_with_user();
+    let contract_id = client.address.clone();
+    env.as_contract(&contract_id, || {
+        assert_eq!(get_reward_tx_counter(&env), 0);
+    });
+    client.credit_reward(&admin, &user, &100, &RewardType::Streak);
+    client.credit_reward(&admin, &user, &200, &RewardType::Streak);
+    env.as_contract(&contract_id, || {
+        assert_eq!(get_reward_tx_counter(&env), 2);
+    });
+}
+
+#[test]
+fn test_credit_reward_scalar_storage_matches_account() {
+    let (env, admin, user, client) = setup_with_user();
+    let contract_id = client.address.clone();
+    client.credit_reward(&admin, &user, &1_234_567, &RewardType::SpendingLimit);
+    let account = client.get_account(&user).unwrap();
+    env.as_contract(&contract_id, || {
+        assert_eq!(get_reward_balance(&env, &user), account.balance);
+        assert_eq!(get_lifetime_earned(&env, &user), account.lifetime_earned);
+    });
+}
+
+#[test]
+fn test_credit_reward_updates_last_updated() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &1_000, &RewardType::Referral);
+    let account = client.get_account(&user).unwrap();
+    assert!(account.last_updated >= account.created_at);
+}
+
+#[test]
+fn test_credit_reward_multiple_users_are_independent() {
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+    client.register_account(&user_a);
+    client.register_account(&user_b);
+
+    client.credit_reward(&admin, &user_a, &1_000, &RewardType::Streak);
+    client.credit_reward(&admin, &user_b, &5_000, &RewardType::ManualGrant);
+
+    let a = client.get_account(&user_a).unwrap();
+    let b = client.get_account(&user_b).unwrap();
+    assert_eq!(a.balance, 1_000);
+    assert_eq!(b.balance, 5_000);
+}
+
+#[test]
+#[should_panic]
+fn test_credit_reward_zero_amount_panics() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &0, &RewardType::Streak);
+}
+
+#[test]
+#[should_panic]
+fn test_credit_reward_negative_amount_panics() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &-1, &RewardType::Streak);
+}
+
+#[test]
+#[should_panic]
+fn test_credit_reward_unregistered_account_panics() {
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let stranger = Address::generate(&env);
+    client.credit_reward(&admin, &stranger, &1_000, &RewardType::Streak);
+}
+
+#[test]
+#[should_panic]
+fn test_credit_reward_before_init_panics() {
+    let (env, admin, client) = setup();
+    let user = Address::generate(&env);
+    client.credit_reward(&admin, &user, &1_000, &RewardType::Streak);
+}
+
+#[test]
+#[should_panic]
+fn test_credit_reward_overflow_on_balance_panics() {
+    let (_env, admin, user, client) = setup_with_user();
+    client.credit_reward(&admin, &user, &i128::MAX, &RewardType::ManualGrant);
+    client.credit_reward(&admin, &user, &1, &RewardType::ManualGrant);
+}
+
+#[test]
+fn test_credit_reward_i128_max_is_accepted() {
+    let (_env, admin, user, client) = setup_with_user();
+    let tx = client.credit_reward(&admin, &user, &i128::MAX, &RewardType::ManualGrant);
+    assert_eq!(tx.amount, i128::MAX);
+    let account = client.get_account(&user).unwrap();
+    assert_eq!(account.balance, i128::MAX);
+    assert_eq!(account.lifetime_earned, i128::MAX);
 }
 
 // ── Data model tests (#877) ───────────────────────────────────────────────────

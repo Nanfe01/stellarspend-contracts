@@ -30,3 +30,25 @@ pub fn validate_contract_initialized(env: &Env) -> Result<(), RewardsError> {
     }
     Ok(())
 }
+
+/// Asserts that a reward account exists for `account`.
+///
+/// # Errors
+/// Returns `RewardsError::AccountNotFound` if no account record is present.
+pub fn validate_account_registered(env: &Env, account: &Address) -> Result<(), RewardsError> {
+    if !has_reward_account(env, account) {
+        return Err(RewardsError::AccountNotFound);
+    }
+    Ok(())
+}
+
+/// Asserts that `amount` is strictly positive.
+///
+/// # Errors
+/// Returns `RewardsError::InvalidAmount` if `amount` is zero or negative.
+pub fn validate_reward_amount(amount: i128) -> Result<(), RewardsError> {
+    if amount <= 0 {
+        return Err(RewardsError::InvalidAmount);
+    }
+    Ok(())
+}

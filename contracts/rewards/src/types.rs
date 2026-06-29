@@ -37,6 +37,8 @@ pub enum DataKey {
     RewardAccount(Address),
     /// Individual reward transaction record, keyed by transaction ID (persistent storage).
     RewardTransaction(u64),
+    /// Monotonically incrementing counter for reward transaction IDs (instance storage).
+    RewardTxCounter,
 }
 
 // ── Enums ─────────────────────────────────────────────────────────────────────

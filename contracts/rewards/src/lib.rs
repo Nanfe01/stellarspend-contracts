@@ -13,7 +13,7 @@ pub mod validation;
 
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env};
 
-use crate::rewards::register_reward_account;
+use crate::rewards::{credit_reward, register_reward_account};
 use crate::storage::get_reward_account;
 pub use crate::types::{DataKey, RewardAccount, RewardStatus, RewardTransaction, RewardType};
 
@@ -29,6 +29,12 @@ pub enum RewardsError {
     AlreadyInitialized = 3,
     /// Reward account already exists for this address.
     AccountAlreadyRegistered = 4,
+    /// Reward amount must be greater than zero.
+    InvalidAmount = 5,
+    /// No reward account found for the given address.
+    AccountNotFound = 6,
+    /// Arithmetic overflow would occur.
+    Overflow = 7,
 }
 
 impl From<RewardsError> for soroban_sdk::Error {
@@ -99,6 +105,38 @@ impl RewardsContract {
     /// Returns the `RewardAccount` metadata for `participant`, if registered.
     pub fn get_account(env: Env, participant: Address) -> Option<RewardAccount> {
         get_reward_account(&env, &participant)
+    }
+
+    /// Credits `amount` reward points to `participant`'s account.
+    ///
+    /// Only the contract admin may call this entry point. The amount must be
+    /// strictly positive. Both the claimable balance and the lifetime-earned
+    /// total are updated atomically. A [`RewardTransaction`] record is
+    /// persisted and a `reward_credited` event is emitted.
+    ///
+    /// # Errors
+    /// Panics with `NotInitialized` if the contract has not been initialised.
+    /// Panics with `Unauthorized` if the caller is not the admin.
+    /// Panics with `AccountNotFound` if `participant` has no reward account.
+    /// Panics with `InvalidAmount` if `amount` is zero or negative.
+    /// Panics with `Overflow` if crediting would overflow `i128`.
+    pub fn credit_reward(
+        env: Env,
+        participant: Address,
+        amount: i128,
+        reward_type: RewardType,
+    ) -> RewardTransaction {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap_or_else(|| panic_with_error!(&env, RewardsError::NotInitialized));
+        admin.require_auth();
+
+        match credit_reward(&env, &participant, amount, reward_type) {
+            Ok(tx) => tx,
+            Err(e) => panic_with_error!(&env, e),
+        }
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────
