@@ -128,4 +128,41 @@ mod test {
 
         client.set_user_balance(&admin, &user, &-1i128);
     }
+
+    #[test]
+fn updating_balance_overwrites_previous_value() {
+    let (env, admin, client) = setup();
+    let user = Address::generate(&env);
+
+    client.set_user_balance(&admin, &user, &500i128);
+    assert_eq!(client.get_user_balance(&user), 500);
+
+    client.set_user_balance(&admin, &user, &1200i128);
+    assert_eq!(client.get_user_balance(&user), 1200);
+}
+
+#[test]
+fn balances_are_isolated_between_users() {
+    let (env, admin, client) = setup();
+
+    let alice = Address::generate(&env);
+    let bob = Address::generate(&env);
+
+    client.set_user_balance(&admin, &alice, &100i128);
+    client.set_user_balance(&admin, &bob, &250i128);
+
+    assert_eq!(client.get_user_balance(&alice), 100);
+    assert_eq!(client.get_user_balance(&bob), 250);
+}
+
+#[test]
+#[should_panic]
+fn non_admin_cannot_set_balance() {
+    let (env, _admin, client) = setup();
+
+    let fake_admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    client.set_user_balance(&fake_admin, &user, &100i128);
+}
 }
